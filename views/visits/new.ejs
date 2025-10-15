@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>บันทึกการรักษา | DentalCare</title>
+  <link rel="stylesheet" href="/public/css/record_treatment.css"/>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <nav class="nav">
+        <a href="/patients" class="active">เวชระเบียน</a>
+        <a href="#">นัดหมาย</a>
+        <a href="#">ชำระเงิน</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="grid">
+        <section class="panel">
+          <div class="field"><div class="label">ชื่อ นามสกุล</div><div><%= patient.first_name %> <%= patient.last_name %></div></div>
+          <div class="field"><div class="label">Clinic No.</div><div><%= patient.clinic_number %></div></div>
+          <div class="field"><div class="label"></div><div><a class="btn gray" href="/patients/<%= patient.id %>/history">ประวัติการรักษา</a></div></div>
+        </section>
+
+        <section class="panel">
+          <form class="form" action="/visits" method="post" id="visitForm">
+            <input type="hidden" name="patient_id" value="<%= patient.id %>">
+            <div class="field"><div class="label">วันที่</div><div><input type="date" name="visit_date" required></div></div>
+            <div class="field"><div class="label">แพทย์</div><div><input type="text" name="doctor_name" placeholder="ชื่อทันตแพทย์"></div></div>
+            <div class="field"><div class="label">Blood Pressure</div>
+              <div>
+                <div class="bp-wrap">
+                  <input id="bp-sys" type="number" name="bp_sys" min="40" max="260" step="1" placeholder="ตัวบน" aria-label="BP ตัวบน (Systolic)"/>
+                  <span>/</span>
+                  <input id="bp-dia" type="number" name="bp_dia" min="20" max="160" step="1" placeholder="ตัวล่าง" aria-label="BP ตัวล่าง (Diastolic)"/>
+                  <span class="unit">mmHg</span>
+                </div>
+              </div>
+            </div>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">Clinical Data</div>
+        <textarea name="clinical_notes" placeholder="บันทึกรายละเอียดอาการ / ข้อสังเกต / การตรวจ"></textarea>
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">ทันตกรรมหัตถการ</div>
+        <div class="chips">
+          <label class="chip"><input id="proc-scaling" type="checkbox" value="SCALING"><span>ขูดหินปูน</span></label>
+          <label class="chip"><input id="proc-filling" type="checkbox" value="FILLING"><span>อุดฟัน</span></label>
+          <label class="chip"><input type="checkbox" name="procedures_codes" value="EXTRACTION"><span>ถอนฟัน</span></label>
+          <label class="chip"><input type="checkbox" name="procedures_codes" value="CHECKUP"><span>ตรวจสุขภาพฟัน</span></label>
+          <label class="chip"><input type="checkbox" id="proc-other" value="OTHER"><span>อื่นๆ ระบุ</span></label>
+        </div>
+        <input id="other-detail" class="other-input" name="procedures_other_detail" type="text" placeholder="กรอกรายละเอียดหัตถการอื่น ๆ" hidden />
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">ซี่ที่ทำ/รักษา (เลือกหลายซี่ได้)</div>
+        <div class="teeth-mode" role="radiogroup" aria-label="โหมดฟัน">
+          <label><input type="radio" name="teethMode" value="permanent" checked> ผู้ใหญ่ (11–48)</label>
+          <label><input type="radio" name="teethMode" value="primary"> เด็ก (51–85)</label>
+        </div>
+        <div id="teethBox" class="teeth-grid" aria-label="เลือกซี่ฟัน"></div>
+        <div class="hint">* ถ้าเลือก “อุดฟัน” ระบบจะใช้จำนวนซี่ที่เลือกนี้เป็นจำนวนอัตโนมัติ (แก้มือได้)</div>
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">ราคา/ค่าบริการวันนี้</div>
+        <div class="price-grid">
+          <div>
+            <div class="field">
+              <div class="label">ขูดหินปูน</div>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input id="enable-scaling" type="checkbox" aria-label="คิดราคา ขูดหินปูน">
+                <label for="enable-scaling" class="muted">คิดราคา</label>
+                <input id="price-scaling" type="number" min="0" step="1" placeholder="ราคา (บาท)" disabled>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="field">
+              <div class="label">อุดฟัน</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center">
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input id="enable-filling" type="checkbox" aria-label="คิดราคา อุดฟัน">
+                  <label for="enable-filling" class="muted">คิดราคา</label>
+                </div>
+                <input id="price-fill-per" type="number" min="0" step="1" placeholder="ราคาต่อซี่ (บาท)" disabled>
+                <input id="price-fill-count" type="number" min="0" step="1" placeholder="จำนวนซี่" disabled>
+                <div class="hint">จำนวนซี่จะดึงจากซี่ที่เลือกอัตโนมัติ (แก้ได้เอง)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary" style="margin-top:8px">
+          <div class="summary-row"><span>ขูดหินปูน</span><span id="sum-scaling" class="muted">—</span></div>
+          <div class="summary-row"><span>อุดฟัน</span><span id="sum-filling" class="muted">—</span></div>
+          <div class="summary-row"><span>รวมบริการอื่น ๆ</span><span id="sum-extras" class="muted">—</span></div>
+          <div class="summary-total"><span>ยอดรวม</span><span id="sum-total">฿0</span></div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">บริการอื่น ๆ</div>
+        <div class="hint">เลือกรายการเพิ่ม เช่น ถอนฟัน, X-ray, RCT, ครอบฟัน ฯลฯ</div>
+        <div style="overflow:auto; margin-top:8px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">ใช้</th>
+                <th>รายการ</th>
+                <th style="width:160px">หน่วย/วิธีคิด</th>
+                <th style="width:160px">ราคา/หน่วย (บาท)</th>
+                <th style="width:120px">จำนวน</th>
+                <th style="width:140px">ยอดย่อย</th>
+                <th style="width:160px">ซิงก์จำนวนซี่</th>
+              </tr>
+            </thead>
+            <tbody id="serviceBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="label" style="margin-bottom:8px">ภาพ X-ray ฟัน</div>
+        <div id="uploader" class="uploader" tabindex="0" role="button" aria-label="อัปโหลดภาพ X-ray (ลากวางหรือคลิกเพื่อเลือก)">
+          <strong>ลากรูปมาวางที่นี่ หรือ <button id="pickBtn" class="btn gray" type="button">เลือกไฟล์</button></strong>
+          <small>รองรับ .jpg .png .webp (อัปโหลดได้หลายรูป)</small>
+          <input id="xrayInput" type="file" accept="image/*" multiple aria-hidden="true" />
+        </div>
+        <div id="xrayList" class="xray-grid" aria-live="polite"></div>
+      </section>
+
+      <div class="footer">
+        <a class="btn gray" href="/patients">ยกเลิก</a>
+        <button class="btn green" type="submit" form="visitForm">ยืนยัน</button>
+      </div>
+      </form>
+    </main>
+  </div>
+  <script src="/public/js/visits.js"></script>
+</body>
+</html>

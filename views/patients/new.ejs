@@ -1,0 +1,20 @@
+<% layout('layouts/layout') -%>
+<h1>เพิ่มผู้ป่วยใหม่</h1>
+<form class="form" action="/patients" method="post">
+  <label>Clinic Number (CN)<input name="clinic_number" required></label>
+  <label>ชื่อ<input name="first_name" required></label>
+  <label>นามสกุล<input name="last_name" required></label>
+  <label>เพศ
+    <select name="gender">
+      <option value="M">M</option>
+      <option value="F">F</option>
+      <option value="X" selected>X</option>
+    </select>
+  </label>
+  <label>อายุ<input type="number" name="age" min="0"></label>
+  <label>เบอร์โทร<input name="phone"></label>
+  <div class="actions">
+    <a class="btn ghost" href="/patients">ยกเลิก</a>
+    <button class="btn primary" type="submit">บันทึก</button>
+  </div>
+</form>
