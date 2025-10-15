@@ -7,8 +7,8 @@
   
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> 
-  <link rel="stylesheet" href="/public/css/styles.css"/> <!-- Main theme -->
-  <link rel="stylesheet" href="/public/css/history-custom.css"/> <!-- Custom CSS for this page -->
+  <link rel="stylesheet" href="/public/css/styles.css"/> 
+  <link rel="stylesheet" href="/public/css/history-custom.css"/> 
 </head>
 <body>
   <div class="container-fluid mt-4">
@@ -45,7 +45,6 @@
             </div>
         </div>
 
-        <!-- Table Header -->
         <div class="visit-list-header">
           <div>วันที่ / เวลา</div>
           <div>หัตถการ / สรุป</div>
@@ -55,21 +54,13 @@
         <div class="visit-list-body" id="visit-list-body">
             <% if(visits.length > 0) { %>
                 <% visits.forEach((visit, index) => { 
-                    const proceduresSummary = visit.procedures_summary || '-';
                     const doctorName = visit.doctor_name || 'N/A';
                     const clinicalNotes = visit.clinical_notes || '';
-                    const proceduresList = visit.procedures_list || '';
-                    const xrayList = visit.xray_images_list || '';
-                    const vitalSignsText = visit.vital_signs_text || ''; 
+                    const proceduresSummary = visit.procedures_summary || '-';
                     const searchText = (doctorName + ' ' + clinicalNotes + ' ' + proceduresSummary).toLowerCase();
                 %> 
                     <a href="#" class="visit-item <%= index === 0 ? 'active' : '' %>" 
-                       data-visit-date="<%= new Date(visit.visit_date).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ') %>"
-                       data-doctor="<%= doctorName %>"
-                       data-notes="<%= clinicalNotes %>"
-                       data-procedures="<%= proceduresList %>"
-                       data-xrays="<%= xrayList %>"
-                       data-vitals-text="<%= vitalSignsText %>" 
+                       data-visit-id="<%= visit.id %>"
                        data-search-text="<%= searchText %>"
                        data-visit-date-iso="<%= new Date(visit.visit_date).toISOString().split('T')[0] %>">
                         
@@ -88,50 +79,64 @@
       <div class="panel detail-panel">
         <div class="detail-panel-header" id="detail-header">รายละเอียดการรักษา</div>
         <div class="detail-content" id="detail-content">
-            <!-- Details will be populated by script -->
+            <!-- Details populated by script -->
         </div>
       </div>
     </div>
   </div>
 
 <script>
+// THE ROBUST WAY: Embed data directly into a JS variable. Use <%- for raw, unescaped output inside a script tag.
+const allVisitsData = <%- JSON.stringify(visits) %>;
+
 document.addEventListener('DOMContentLoaded', function() {
-    const visitItems = Array.from(document.querySelectorAll('.visit-item'));
+    const visitsMap = new Map(allVisitsData.map(v => [v.id.toString(), v]));
+    
+    const visitListBody = document.getElementById('visit-list-body');
+    const visitItems = Array.from(visitListBody.querySelectorAll('.visit-item'));
     const detailHeader = document.getElementById('detail-header');
     const detailContent = document.getElementById('detail-content');
     const searchInput = document.getElementById('search-input');
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
 
-    function updateDetails(item) {
-        if (!item) {
+    function updateDetails(visitId) {
+        const visit = visitsMap.get(visitId);
+
+        if (!visit) {
             detailHeader.textContent = 'รายละเอียดการรักษา';
             detailContent.innerHTML = `<div class="detail-content-empty">เลือกรายการจากด้านซ้ายเพื่อดูรายละเอียด</div>`;
             return;
         }
 
-        const ds = item.dataset;
-        const doctor = ds.doctor || 'N/A';
-        const notes = ds.notes || 'ไม่มีบันทึก';
-        const procedures = (ds.procedures || '').split('; ').filter(p => p.trim() !== '');
-        const xrays = (ds.xrays || '').split(';').filter(p => p.trim() !== '');
-        const vitalsText = ds.vitalsText || 'ไม่มีข้อมูล';
+        const visitDateFormatted = new Date(visit.visit_date).toLocaleString('th-TH', {
+            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        detailHeader.textContent = `รายละเอียด (${visitDateFormatted})`;
         
-        detailHeader.textContent = `รายละเอียดการรักษา (${ds.visitDate})`;
+        let procedures = [];
+        try {
+            procedures = JSON.parse(visit.procedures_list_json || '[]');
+        } catch(e) { console.error("Error parsing procedures JSON:", e); }
+
+        let xrays = [];
+        try {
+            xrays = JSON.parse(visit.xray_images_list_json || '[]');
+        } catch(e) { console.error("Error parsing xrays JSON:", e); }
 
         let contentHtml = `
             <h5>Vital Signs</h5>
-            <p>${vitalsText}</p>
+            <p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p>
             <hr>
             <h5>รายการหัตถการ</h5>
-            ${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
+            ${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
             <hr>
             <h5>ทันตแพทย์ผู้รักษา</h5>
-            <p>ทพ. ${doctor}</p>
+            <p>ทพ. ${visit.doctor_name || 'N/A'}</p>
             <hr>
             <h5>บันทึก/ข้อสังเกต</h5>
-            <p>${notes}</p>
-            `;
+            <p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p>
+        `;
 
         if (xrays.length > 0) {
              contentHtml += `
@@ -139,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h5>X-Ray Images</h5>
             <div class="row">${xrays.map(path => `
                 <div class="col-md-4 mb-2">
-                    <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded"></a>
+                    <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a>
                 </div>`).join('')}
             </div>`;
         }
@@ -147,65 +152,68 @@ document.addEventListener('DOMContentLoaded', function() {
         detailContent.innerHTML = contentHtml;
     }
 
-    function filterAndRender() {
+    function filterItems() {
         const searchTerm = searchInput.value.toLowerCase();
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
-        let firstVisibleItem = null;
+
+        let firstVisible = null;
 
         visitItems.forEach(item => {
             const searchText = item.dataset.searchText || '';
             const visitDate = item.dataset.visitDateIso || '';
+
             const isSearchMatch = !searchTerm || searchText.includes(searchTerm);
             const isStartDateMatch = !startDate || visitDate >= startDate;
             const isEndDateMatch = !endDate || visitDate <= endDate;
 
             if (isSearchMatch && isStartDateMatch && isEndDateMatch) {
                 item.style.display = 'grid';
-                if (!firstVisibleItem) firstVisibleItem = item;
+                if (!firstVisible) firstVisible = item;
             } else {
                 item.style.display = 'none';
-                item.classList.remove('active');
             }
         });
         
         let currentActive = document.querySelector('.visit-item.active');
         if (!currentActive || currentActive.style.display === 'none') {
-            if (firstVisibleItem) {
-                firstVisibleItem.classList.add('active');
-                updateDetails(firstVisibleItem);
+            visitItems.forEach(i => i.classList.remove('active'));
+            if (firstVisible) {
+                firstVisible.classList.add('active');
+                updateDetails(firstVisible.dataset.visitId);
             } else {
-                updateDetails(null); 
+                 updateDetails(null);
             }
         }
     }
 
-    visitItems.forEach(item => {
-        item.addEventListener('click', function(e) {
+    visitListBody.addEventListener('click', function(e) {
+        const item = e.target.closest('.visit-item');
+        if (item) {
             e.preventDefault();
-            if (this.classList.contains('active')) return; 
+            if (item.classList.contains('active')) return;
+            
             visitItems.forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
-            updateDetails(this);
-        });
+            item.classList.add('active');
+            updateDetails(item.dataset.visitId);
+        }
     });
-
-    [searchInput, startDateInput, endDateInput].forEach(el => {
-        const handler = () => requestAnimationFrame(filterAndRender);
-        el.addEventListener('input', handler);
-        el.addEventListener('change', handler);
+    
+    [searchInput, startDateInput, endDateInput].forEach(input => {
+      input.addEventListener('input', () => requestAnimationFrame(filterItems));
+      input.addEventListener('change', () => requestAnimationFrame(filterItems));
     });
 
     function initialize() {
-        const initialActiveItem = document.querySelector('.visit-item.active');
-        if (initialActiveItem) {
-            updateDetails(initialActiveItem);
-        } else if (visitItems.length > 0) {
-            visitItems[0].classList.add('active');
-            updateDetails(visitItems[0]);
-        } else {
-            updateDetails(null);
-        }
+      const initialActive = visitItems.find(item => item.classList.contains('active'));
+      if (initialActive) {
+          updateDetails(initialActive.dataset.visitId);
+      } else if (visitItems.length > 0) {
+          visitItems[0].classList.add('active');
+          updateDetails(visitItems[0].dataset.visitId);
+      } else {
+          updateDetails(null);
+      }
     }
 
     initialize();
