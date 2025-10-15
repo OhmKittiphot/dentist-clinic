@@ -1,58 +1,49 @@
+
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/db');
+const db = require('../db');
+const multer = require('multer');
+const upload = multer({ dest: 'public/uploads/' });
 
-router.get('/new/:patientId', async (req, res, next) => {
-  try {
-    const [rows] = await pool.query(
-      `SELECT id, clinic_number, first_name, last_name FROM patients WHERE id = ?`, [req.params.patientId]
-    );
-    if (!rows[0]) return res.status(404).send('Patient not found');
-    res.render('visits/new', { patient: rows[0] });
-  } catch (e) { next(e); }
+// Display form to add a new visit
+router.get('/new/:patient_id', (req, res, next) => {
+  const patient_id = req.params.patient_id;
+  db.get('SELECT * FROM patients WHERE id = ?', [patient_id], (err, patient) => {
+    if (err) return next(err);
+    db.all('SELECT * FROM procedure_codes', [], (err, procedure_codes) => {
+        if (err) return next(err);
+        res.render('visits/new', { patient: patient, procedure_codes: procedure_codes });
+    });
+  });
 });
 
-router.post('/', async (req, res, next) => {
-  const {
-    patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes,
-    procedures_codes = [], procedures_teeth = [], procedures_qty = [], procedures_price = []
-  } = req.body;
+// Handle new visit form submission
+router.post('/', upload.array('xrays'), (req, res, next) => {
+  const { patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes, procedures } = req.body;
+  const visitSql = `INSERT INTO visits (patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes) VALUES (?, ?, ?, ?, ?, ?)`;
+  const visitParams = [patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes];
 
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const [vr] = await conn.query(
-      `INSERT INTO visits (patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes)
-       VALUES (?,?,?,?,?,?)`,
-      [patient_id, visit_date, doctor_name || null, bp_sys || null, bp_dia || null, clinical_notes || null]
-    );
-    const visitId = vr.insertId;
+  db.run(visitSql, visitParams, function(err) {
+    if (err) return next(err);
+    const visit_id = this.lastID;
 
-    const codes = Array.isArray(procedures_codes) ? procedures_codes : [procedures_codes].filter(Boolean);
-    const teeth = Array.isArray(procedures_teeth) ? procedures_teeth : [procedures_teeth].filter(Boolean);
-    const qtys  = Array.isArray(procedures_qty)  ? procedures_qty  : [procedures_qty].filter(Boolean);
-    const prices= Array.isArray(procedures_price)? procedures_price: [procedures_price].filter(Boolean);
-
-    for (let i = 0; i < codes.length; i++) {
-      const code = codes[i] || 'OTHER';
-      const tooth = teeth[i] || null;
-      const qty = Number(qtys[i] || 1);
-      const price_each = Number(prices[i] || 0);
-      await conn.query(
-        `INSERT INTO procedures (visit_id, code, description, tooth_no, qty, price_each)
-         VALUES (?,?,?,?,?,?)`,
-        [visitId, code, null, tooth, qty, price_each]
-      );
+    if (procedures) {
+        const procList = JSON.parse(procedures);
+        const procSql = `INSERT INTO procedures (visit_id, code, description, tooth_no, qty, price_each) VALUES (?, ?, ?, ?, ?, ?)`;
+        procList.forEach(p => {
+            db.run(procSql, [visit_id, p.code, p.description, p.tooth_no, p.qty, p.price_each]);
+        });
     }
 
-    await conn.commit();
+    const xraySql = `INSERT INTO xray_images (visit_id, image_path) VALUES (?, ?)`;
+    if(req.files){
+        req.files.forEach(file => {
+            db.run(xraySql, [visit_id, '/uploads/' + file.filename]);
+        });
+    }
+    
     res.redirect(`/patients`);
-  } catch (e) {
-    await conn.rollback();
-    next(e);
-  } finally {
-    conn.release();
-  }
+  });
 });
 
 module.exports = router;

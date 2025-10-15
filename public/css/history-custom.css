@@ -1,0 +1,209 @@
+/* Final refined styles with table header */
+
+:root {
+    --page-bg: #f6f9fc;
+    --card-bg: #ffffff;
+    --text-main: #14233b;
+    --text-muted: #6b7a8a;
+    --border-light: #e6eef6;
+    --brand-blue: #2f6fb7;
+    --toolbar-bg: #eaf2fa;
+    --shadow: 0 4px 12px rgba(21, 35, 59, 0.05);
+}
+
+body {
+    background-color: var(--page-bg);
+    color: var(--text-main);
+}
+
+.patient-name-header {
+    color: var(--text-main);
+    font-weight: 900;
+    font-size: 1.5rem;
+}
+
+.patient-info-chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.patient-info-chips .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--toolbar-bg);
+    border: 1px solid var(--border-light);
+    color: #20456f;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Overall layout */
+.main-content {
+    display: grid;
+    grid-template-columns: 5fr 7fr; 
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* Shared Panel Style */
+.panel {
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow);
+}
+
+/* Left List Panel */
+.list-panel {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.history-toolbar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: var(--toolbar-bg);
+    border-radius: 10px;
+}
+
+.history-toolbar .search-wrapper {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.history-toolbar .search-wrapper input[type="search"] {
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.history-toolbar input:focus { outline: none; }
+
+.history-toolbar .date-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.history-toolbar input[type="date"] {
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background-color: var(--card-bg);
+    font-size: 0.9rem;
+}
+.history-toolbar label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
+}
+
+/* --- TABLE HEADER --- */
+.visit-list-header {
+    display: grid;
+    grid-template-columns: 150px 1fr 120px;
+    gap: 16px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    background-color: var(--brand-blue);
+    color: var(--card-bg);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-top: 8px; /* Spacing from toolbar */
+}
+
+.visit-list-header div {
+    color: inherit;
+}
+
+.visit-list-body {
+    padding: 8px 0 0;
+}
+
+.visit-item {
+    display: grid;
+    grid-template-columns: 150px 1fr 120px;
+    gap: 16px;
+    padding: 14px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    border: 2px solid transparent;
+    color: var(--text-muted);
+}
+
+.visit-item div {
+    color: inherit;
+    font-weight: 500;
+}
+
+.visit-item:hover {
+    background-color: var(--page-bg);
+}
+
+.visit-item.active {
+    font-weight: 600;
+    color: var(--text-main);
+    background-color: var(--toolbar-bg);
+}
+
+/* Right Detail Panel */
+.detail-panel {
+    padding: 1.5rem;
+}
+
+.detail-panel-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 1.5rem;
+}
+
+.detail-content h5 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--brand-blue);
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.detail-content p,
+.detail-content ul {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    color: #334a69;
+    line-height: 1.6;
+}
+
+.detail-content ul {
+    padding-left: 1.2rem;
+}
+
+.detail-content hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--border-light);
+    margin: 1.5rem 0;
+}
+
+.detail-content-empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+}

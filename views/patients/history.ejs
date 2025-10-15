@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ประวัติการรักษา: <%= patient.first_name %> | Dentaist Clinic System</title>
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> 
+  <link rel="stylesheet" href="/public/css/styles.css"/> <!-- Main theme -->
+  <link rel="stylesheet" href="/public/css/history-custom.css"/> <!-- Custom CSS for this page -->
+</head>
+<body>
+  <div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="patient-name-header"><%= patient.first_name %> <%= patient.last_name %></h3>
+            <div class="patient-info-chips">
+                <span class="chip">CN: <%= patient.clinic_number %></span>
+                <span class="chip">อายุ: <%= patient.age %></span>
+                <span class="chip">เพศ: <%= patient.gender %></span>
+            </div>
+        </div>
+        <div>
+          <a href="/visits/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+          <a href="/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Left Panel: List -->
+      <div class="panel list-panel">
+        <div class="history-toolbar">
+            <div class="search-wrapper">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted)"></i>
+                <input type="search" id="search-input" placeholder="ค้นหา (แพทย์/หัตถการ/หมายเหตุ)">
+            </div>
+            <div class="date-group">
+                <label for="start-date-input">จาก</label>
+                <input type="date" id="start-date-input">
+            </div>
+            <div class="date-group">
+                <label for="end-date-input">ถึง</label>
+                <input type="date" id="end-date-input">
+            </div>
+        </div>
+
+        <!-- Table Header -->
+        <div class="visit-list-header">
+          <div>วันที่ / เวลา</div>
+          <div>หัตถการ / สรุป</div>
+          <div>ทันตแพทย์</div>
+        </div>
+
+        <div class="visit-list-body" id="visit-list-body">
+            <% if(visits.length > 0) { %>
+                <% visits.forEach((visit, index) => { 
+                    const proceduresSummary = visit.procedures_summary || '-';
+                    const doctorName = visit.doctor_name || 'N/A';
+                    const clinicalNotes = visit.clinical_notes || '';
+                    const proceduresList = visit.procedures_list || '';
+                    const xrayList = visit.xray_images_list || '';
+                    const vitalSignsText = visit.vital_signs_text || ''; 
+                    const searchText = (doctorName + ' ' + clinicalNotes + ' ' + proceduresSummary).toLowerCase();
+                %> 
+                    <a href="#" class="visit-item <%= index === 0 ? 'active' : '' %>" 
+                       data-visit-date="<%= new Date(visit.visit_date).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ') %>"
+                       data-doctor="<%= doctorName %>"
+                       data-notes="<%= clinicalNotes %>"
+                       data-procedures="<%= proceduresList %>"
+                       data-xrays="<%= xrayList %>"
+                       data-vitals-text="<%= vitalSignsText %>" 
+                       data-search-text="<%= searchText %>"
+                       data-visit-date-iso="<%= new Date(visit.visit_date).toISOString().split('T')[0] %>">
+                        
+                        <div><%= new Date(visit.visit_date).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ') %></div>
+                        <div><%= proceduresSummary %></div>
+                        <div>ทพ. <%= doctorName %></div>
+                    </a>
+                <% }); %>
+            <% } else { %>
+                <div class="text-center p-4 text-muted">ไม่มีประวัติการรักษา</div>
+            <% } %>
+        </div>
+      </div>
+
+      <!-- Right Panel: Details -->
+      <div class="panel detail-panel">
+        <div class="detail-panel-header" id="detail-header">รายละเอียดการรักษา</div>
+        <div class="detail-content" id="detail-content">
+            <!-- Details will be populated by script -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const visitItems = Array.from(document.querySelectorAll('.visit-item'));
+    const detailHeader = document.getElementById('detail-header');
+    const detailContent = document.getElementById('detail-content');
+    const searchInput = document.getElementById('search-input');
+    const startDateInput = document.getElementById('start-date-input');
+    const endDateInput = document.getElementById('end-date-input');
+
+    function updateDetails(item) {
+        if (!item) {
+            detailHeader.textContent = 'รายละเอียดการรักษา';
+            detailContent.innerHTML = `<div class="detail-content-empty">เลือกรายการจากด้านซ้ายเพื่อดูรายละเอียด</div>`;
+            return;
+        }
+
+        const ds = item.dataset;
+        const doctor = ds.doctor || 'N/A';
+        const notes = ds.notes || 'ไม่มีบันทึก';
+        const procedures = (ds.procedures || '').split('; ').filter(p => p.trim() !== '');
+        const xrays = (ds.xrays || '').split(';').filter(p => p.trim() !== '');
+        const vitalsText = ds.vitalsText || 'ไม่มีข้อมูล';
+        
+        detailHeader.textContent = `รายละเอียดการรักษา (${ds.visitDate})`;
+
+        let contentHtml = `
+            <h5>Vital Signs</h5>
+            <p>${vitalsText}</p>
+            <hr>
+            <h5>รายการหัตถการ</h5>
+            ${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
+            <hr>
+            <h5>ทันตแพทย์ผู้รักษา</h5>
+            <p>ทพ. ${doctor}</p>
+            <hr>
+            <h5>บันทึก/ข้อสังเกต</h5>
+            <p>${notes}</p>
+            `;
+
+        if (xrays.length > 0) {
+             contentHtml += `
+            <hr>
+            <h5>X-Ray Images</h5>
+            <div class="row">${xrays.map(path => `
+                <div class="col-md-4 mb-2">
+                    <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded"></a>
+                </div>`).join('')}
+            </div>`;
+        }
+
+        detailContent.innerHTML = contentHtml;
+    }
+
+    function filterAndRender() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        let firstVisibleItem = null;
+
+        visitItems.forEach(item => {
+            const searchText = item.dataset.searchText || '';
+            const visitDate = item.dataset.visitDateIso || '';
+            const isSearchMatch = !searchTerm || searchText.includes(searchTerm);
+            const isStartDateMatch = !startDate || visitDate >= startDate;
+            const isEndDateMatch = !endDate || visitDate <= endDate;
+
+            if (isSearchMatch && isStartDateMatch && isEndDateMatch) {
+                item.style.display = 'grid';
+                if (!firstVisibleItem) firstVisibleItem = item;
+            } else {
+                item.style.display = 'none';
+                item.classList.remove('active');
+            }
+        });
+        
+        let currentActive = document.querySelector('.visit-item.active');
+        if (!currentActive || currentActive.style.display === 'none') {
+            if (firstVisibleItem) {
+                firstVisibleItem.classList.add('active');
+                updateDetails(firstVisibleItem);
+            } else {
+                updateDetails(null); 
+            }
+        }
+    }
+
+    visitItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (this.classList.contains('active')) return; 
+            visitItems.forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            updateDetails(this);
+        });
+    });
+
+    [searchInput, startDateInput, endDateInput].forEach(el => {
+        const handler = () => requestAnimationFrame(filterAndRender);
+        el.addEventListener('input', handler);
+        el.addEventListener('change', handler);
+    });
+
+    function initialize() {
+        const initialActiveItem = document.querySelector('.visit-item.active');
+        if (initialActiveItem) {
+            updateDetails(initialActiveItem);
+        } else if (visitItems.length > 0) {
+            visitItems[0].classList.add('active');
+            updateDetails(visitItems[0]);
+        } else {
+            updateDetails(null);
+        }
+    }
+
+    initialize();
+});
+</script>
+</body>
+</html>

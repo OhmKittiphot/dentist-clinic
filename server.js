@@ -41,10 +41,15 @@ app.use('/upload', uploadRouter);
 app.use('/', historyRouter);
 
 // Healthcheck
-const { pool } = require('./config/db');
-app.get('/health', async (req, res) => {
-  try { await pool.query('SELECT 1'); res.json({ ok: true }); }
-  catch (e) { console.error(e); res.status(500).json({ ok: false, error: e.message }); }
+const db = require('./db');
+app.get('/health', (req, res) => {
+  db.get('SELECT 1', (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+    res.json({ ok: true });
+  });
 });
 
 app.use((req, res) => res.status(404).send('Not found'));

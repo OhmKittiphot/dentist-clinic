@@ -77,7 +77,7 @@
         dt: (v.visit_date || '').slice ? v.visit_date.slice(0,16).replace('T',' ') : v.visit_date,
         doctor: v.doctor_name || '',
         summary: ( ( (procMap.get(v.id)||[]).map(p=>p.code + (p.tooth_no? ' ('+p.tooth_no+')':'')) ).join(', ') ) || '—',
-        procedures: (procMap.get(v.id)||[]).map(p=> (p.code + (p.tooth_no? ' ('+p.tooth_no+')':'')) ),
+        procedures: (procMap.get(v.id)||[]).map(p=> (`${p.code}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''} - ค่าใช้จ่าย: ${p.qty * p.price_each} บาท`)),
         vitals: (v.bp_sys||v.bp_dia) ? `BP ${v.bp_sys||'-'}/${v.bp_dia||'-'}` : '—',
         notes: v.clinical_notes || ''
       }))
