@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title><%= title %></title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<main>
+  <section class="wrap">
+    <div class="brand">
+      <div class="logo"><img src="logo.png" alt="Dentalcare Logo"></div>
+      <div>
+        <h1>เข้าสู่ระบบ</h1>
+        <p class="sub">ระบบจัดการคลินิกทันตกรรม</p>
+      </div>
+    </div>
+
+    <div class="card">
+       <% if (message) { %>
+  <div class="alert" style="color:#fff; background-color:#dc3545; padding:10px; border-radius:4px; text-align: center;">
+    <%= message %>
+  </div>
+<% } %>
+      <form method="post" action="/login">
+        <label>รหัสบัตรประชาชน
+          <input name="citizen_id" required maxlength="13">
+        </label>
+        <label>รหัสผ่าน
+          <input type="password" name="password" required>
+        </label>
+        <div class="actions">
+          <button class="primary" type="submit">เข้าสู่ระบบ</button>
+          <a class="link" href="/register">สมัครสมาชิก</a>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ลงทะเบียน | Dentalcare Clinic</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* เสริมเฉพาะหน้านี้เล็กน้อย */
+    .relative {
+      position: relative
+    }
+
+    .toggle {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      opacity: .75
+    }
+
+    .toggle:hover {
+      opacity: 1
+    }
+
+    .bar {
+      height: 8px;
+      background: #e8f4fd;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 6px
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: #22c55e;
+      transition: width .25s
+    }
+
+    .alert {
+      color: #fff;
+      background: #dc3545;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: none
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 14px
+    }
+
+    @media(min-width:900px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <section class="wrap">
+      <!-- Brand -->
+      <div class="brand">
+        <div class="logo"><img src="logo.png" alt="Dentalcare Logo"></div>
+        <div>
+          <h1>ลงทะเบียนผู้ใช้งาน</h1>
+          <p class="sub">ระบบจัดการคลินิกทันตกรรม</p>
+        </div>
+      </div>
+
+      <!-- Card -->
+      <div class="card">
+        <!-- ที่วางข้อความผิดพลาดฝั่งหน้า (ถ้ามี) -->
+        <div id="clientError" class="alert"></div>
+
+        <form id="registerForm" action="/register" method="post" oninput="updateStrength('password')">
+          <div class="grid-2">
+            <div>
+              <label for="prefix">คำหน้าชื่อ</label>
+              <select id="prefix" name="prefix" required>
+                <option value="">เลือก</option>
+                <option>นาย</option>
+                <option>นาง</option>
+                <option>นางสาว</option>
+              </select>
+            </div>
+            <div>
+              <label for="gender">เพศ</label>
+              <select id="gender" name="gender" required>
+                <option value="">เลือก</option>
+                <option>ชาย</option>
+                <option>หญิง</option>
+                <option>อื่น ๆ</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="fname">ชื่อ</label>
+              <input type="text" id="fname" name="fname" required placeholder="ชื่อจริง">
+            </div>
+            <div>
+              <label for="lname">นามสกุล</label>
+              <input type="text" id="lname" name="lname" required placeholder="นามสกุล">
+            </div>
+          </div>
+
+          <div>
+            <div>
+              <label for="dob">วันเกิด</label>
+              <input type="date" id="dob" name="dob" required>
+            </div>
+
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="race">เชื้อชาติ</label>
+              <input type="text" id="race" name="race" placeholder="เช่น ไทย จีน ฯลฯ" required>
+            </div>
+            <div>
+              <label for="nationality">สัญชาติ</label>
+              <input type="text" id="nationality" name="nationality" placeholder="เช่น ไทย" required>
+            </div>
+          </div>
+
+          <div>
+            <label for="religion">ศาสนา</label>
+            <input type="text" id="religion" name="religion" placeholder="เช่น พุทธ คริสต์ อิสลาม" required>
+          </div>
+
+          <div>
+            <label for="allergy">ประวัติแพ้ยา</label>
+            <textarea id="allergy" name="allergy" rows="2" placeholder="ถ้าไม่มีให้เว้นว่าง"></textarea>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="citizen">รหัสบัตรประชาชน</label>
+              <input type="text" id="citizen_id" name="citizen_id" required placeholder="กรอก 13 หลัก" maxlength="13"
+                inputmode="numeric">
+            </div>
+            <div>
+              <label for="phone">เบอร์โทรศัพท์</label>
+              <input type="tel" id="phone" name="phone" placeholder="080xxxxxxx" maxlength="10" inputmode="tel" required>
+            </div>
+          </div>
+
+          <div>
+            <label for="email">อีเมล</label>
+            <input type="email" id="email" name="email" placeholder="name@example.com" required>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="password">รหัสผ่าน</label>
+              <div class="relative">
+                <input type="password" id="password" name="password" required placeholder="อย่างน้อย 8 ตัวอักษร">
+                <button class="toggle" type="button" onclick="toggleVisibility('password')">👁️</button>
+              </div>
+              <div class="bar"><span id="bar"></span></div>
+            </div>
+            <div>
+              <label for="confirm">ยืนยันรหัสผ่าน</label>
+              <div class="relative">
+                <input type="password" id="confirm" name="confirm" required placeholder="พิมพ์รหัสผ่านอีกครั้ง">
+                <button class="toggle" type="button" onclick="toggleVisibility('confirm')">👁️</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="accept" style="margin-top:12px;">
+            <input type="checkbox" name="agree" id="agree" value="1" required>
+            <span>ฉันยอมรับ <a class="link" href="https://www.ratchakitcha.soc.go.th/DATA/PDF/2562/A/069/T_0052.PDF"
+                target="_blank" rel="noopener">ข้อกำหนดและนโยบายความเป็นส่วนตัว</a></span>
+          </label>
+
+          <div class="actions">
+            <a class="link" href="login.html">← กลับเข้าสู่ระบบ</a>
+            <button class="primary" type="submit">สร้างบัญชี</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function strength(pw) {
+      let s = 0;
+      if (pw.length >= 8) s++;
+      if (/[A-Zก-ฮ]/.test(pw)) s++;
+      if (/[a-z]/.test(pw)) s++;
+      if (/[0-9]/.test(pw)) s++;
+      if (/[^A-Za-z0-9]/.test(pw)) s++;
+      return Math.min(s, 4);
+    }
+    function toggleVisibility(id) {
+      const el = document.getElementById(id);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+    function updateStrength(id) {
+      const el = document.getElementById(id);
+      const bar = document.getElementById('bar');
+      if (!el || !bar) return;
+      const s = strength(el.value);
+      bar.style.width = ['0%', '25%', '50%', '75%', '100%'][s];
+    }
+
+  </script>
+</body>
+
+</html>
