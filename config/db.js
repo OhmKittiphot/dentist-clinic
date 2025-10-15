@@ -1,21 +1,56 @@
-const mysql = require('mysql2/promise');
-require('dotenv').config();
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  connectionLimit: 10,
-  waitForConnections: true,
-  enableKeepAlive: true
-});
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./database.sqlite');
 
-async function test(){
-  try { const [r] = await pool.query('SELECT 1 AS ok'); console.log('✅ MySQL pool ready:', r[0]); }
-  catch (e){ console.error('❌ MySQL connection failed:', e.message); }
-}
-test();
+const dbRun = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) {
+                console.error('DB Run Error:', err.message, 'SQL:', sql);
+                reject(err);
+            } else {
+                resolve({ lastID: this.lastID, changes: this.changes });
+            }
+        });
+    });
+};
+
+const dbAll = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) {
+                console.error('DB All Error:', err.message, 'SQL:', sql);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+};
+
+const pool = {
+    query: (sql, params) => {
+        if (sql.trim().toUpperCase().startsWith('SELECT')) {
+            return dbAll(sql, params).then(rows => [rows]);
+        } else {
+            return dbRun(sql, params).then(result => [{ insertId: result.lastID, affectedRows: result.changes }]);
+        }
+    },
+    getConnection: () => {
+        return Promise.resolve({
+            beginTransaction: () => dbRun('BEGIN'),
+            commit: () => dbRun('COMMIT'),
+            rollback: () => dbRun('ROLLBACK'),
+            query: (sql, params) => {
+                 if (sql.trim().toUpperCase().startsWith('SELECT')) {
+                    return dbAll(sql, params).then(rows => [rows]);
+                 } else {
+                    return dbRun(sql, params).then(result => [{ insertId: result.lastID, affectedRows: result.changes }]);
+                 }
+            },
+            release: () => {}
+        });
+    }
+};
 
 module.exports = { pool };

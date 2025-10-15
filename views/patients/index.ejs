@@ -19,12 +19,14 @@
 
     <main class="main">
       <div class="toolbar">
-        <div class="search" role="search">
-          <input type="search" placeholder="ค้นหาผู้ป่วย ชื่อ/นามสกุล/หมายเลขคลินิก" aria-label="Search" />
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M21 21l-4.3-4.3M3 11a8 8 0 1016 0 8 8 0 10-16 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
+        <form class="search" role="search" method="GET" action="/patients">
+          <input type="search" name="search" placeholder="ค้นหาผู้ป่วย ชื่อ/นามสกุล/หมายเลขคลินิก" aria-label="Search" value="<%= searchQuery %>" />
+          <button type="submit" style="background:none; border:none; cursor:pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M21 21l-4.3-4.3M3 11a8 8 0 1016 0 8 8 0 10-16 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
         <div class="spacer"></div>
         <a class="btn btn-success" href="/patients/new">
           <span class="plus">+</span> ลงทะเบียนผู้ป่วยใหม่
@@ -61,15 +63,27 @@
         </div>
       </section>
 
-      <div class="pagination-wrap" aria-label="เปลี่ยนหน้า">
-        <div class="pagination">
-          <button class="page-btn page-ghost" type="button">ก่อนหน้า</button>
-          <button class="page-btn" type="button" aria-current="page">1</button>
-          <button class="page-btn" type="button">2</button>
-          <button class="page-btn" type="button">3</button>
-          <button class="page-btn" type="button">ถัดไป</button>
+      <% if (totalPages > 1) { %>
+        <div class="pagination-wrap" aria-label="เปลี่ยนหน้า">
+          <div class="pagination">
+            <% if (currentPage > 1) { %>
+              <a href="/patients?page=<%= currentPage - 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ก่อนหน้า</a>
+            <% } else { %>
+              <button class="page-btn page-ghost" type="button" disabled>ก่อนหน้า</button>
+            <% } %>
+
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <a href="/patients?page=<%= i %>&search=<%= searchQuery %>" class="page-btn <%= i === currentPage ? 'active' : '' %>" <%= i === currentPage ? 'aria-current="page"' : '' %>><%= i %></a>
+            <% } %>
+
+            <% if (currentPage < totalPages) { %>
+              <a href="/patients?page=<%= currentPage + 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ถัดไป</a>
+            <% } else { %>
+              <button class="page-btn page-ghost" type="button" disabled>ถัดไป</button>
+            <% } %>
+          </div>
         </div>
-      </div>
+      <% } %>
     </main>
   </div>
 </body>
