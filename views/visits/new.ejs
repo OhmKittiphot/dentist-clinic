@@ -126,9 +126,9 @@
                                     <thead>
                                         <tr>
                                             <th>รายการ</th>
-                                            <th>จำนวน</th>
-                                            <th>ราคา</th>
-                                            <th></th>
+                                            <th style="width: 90px;">จำนวน</th>
+                                            <th style="width: 140px;">ราคา</th>
+                                            <th style="width: 40px;"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="treatment-list-body">
@@ -323,10 +323,8 @@
 
             if (item && item.isPerTooth) {
                 syncToothSelection(item.tooth_no);
-                const isChild = (item.tooth_no.split(',')[0] || '').trim().startsWith('5') ||
-                                (item.tooth_no.split(',')[0] || '').trim().startsWith('6') ||
-                                (item.tooth_no.split(',')[0] || '').trim().startsWith('7') ||
-                                (item.tooth_no.split(',')[0] || '').trim().startsWith('8');
+                const selectedToothIds = item.tooth_no.split(',').map(s => s.trim()).filter(Boolean).map(Number);
+                let isChildToothPresent = selectedToothIds.some(toothNum => toothNum >= 51 && toothNum <= 85);
 
                 document.getElementById(isChild ? 'child-teeth-radio' : 'adult-teeth-radio').checked = true;
                 adultTeethDiv.style.display = isChild ? 'none' : 'block';

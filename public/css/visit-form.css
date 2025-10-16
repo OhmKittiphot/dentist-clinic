@@ -6,6 +6,12 @@
     --brand-lighter: #f5f8fb;
     --danger: #e53935;
     --danger-light: #fbe9e7;
+    --success: #34a853; /* Added success variable */
+}
+
+/* Override global container width for this specific page */
+.container.my-4 {
+    max-width: 1200px; /* Increased max-width for more horizontal space */
 }
 
 /* General Card Styling */
@@ -18,7 +24,8 @@
 }
 
 .card-header {
-    background-color: var(--brand-lighter);
+    background-color: var(--brand); /* Blue background for card headers */
+    color: white; /* White text for card headers */
     padding: 12px 20px;
     font-size: 1rem;
     font-weight: 600;
@@ -99,6 +106,7 @@ textarea.form-control {
 .custom-procedure-adder .btn-info {
     background-color: var(--brand);
     border-color: var(--brand);
+    color: white; 
 }
 
 /* Tooth Chart */
@@ -146,31 +154,80 @@ textarea.form-control {
 
 
 /* Right Column Summary */
-.treatment-summary-section .card {
+.treatment-summary-section {
     position: sticky;
     top: 20px;
+}
+.treatment-summary-section .card {
+    margin-bottom: 0; /* Adjust margin if needed as parent is sticky */
 }
 .treatment-list-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed; /* Added for more predictable column widths */
+}
+.treatment-list-table thead {
+    background-color: var(--brand); /* Blue background */
+    color: white; /* White text */
 }
 .treatment-list-table th, .treatment-list-table td {
-    padding: 12px 16px;
+    padding: 8px 4px; /* Reduced horizontal padding for all cells */
     text-align: left;
     border-bottom: 1px solid var(--line);
+    word-wrap: break-word; /* Ensure long words break */
 }
 .treatment-list-table th {
     font-size: 0.8rem;
-    color: var(--muted);
     font-weight: 500;
-    padding-top: 0;
+    padding-top: 12px;
 }
+/* Explicit column widths for fixed table layout */
+.treatment-list-table thead th:nth-child(1) { /* รายการ */
+    width: auto; /* Let it take remaining space */
+}
+.treatment-list-table thead th:nth-child(2) { /* จำนวน */
+    width: 70px;
+    text-align: center; /* Center align numbers in header */
+}
+.treatment-list-table thead th:nth-child(3) { /* ราคา */
+    width: 110px;
+    text-align: right; /* Right align numbers in header */
+}
+.treatment-list-table thead th:nth-child(4) { /* ปุ่มลบ */
+    width: 40px;
+    text-align: center; /* Center the icon in header as well */
+}
+
 .treatment-list-table tr:last-child td {
     border-bottom: none;
+}
+.treatment-list-table td {
+    vertical-align: top; /* Align content to top for multi-line descriptions */
+}
+.treatment-list-table td:nth-child(1) { /* Item description cell */
+    font-size: 0.9rem; /* Make item description slightly larger */
 }
 .treatment-list-table .form-control {
     height: 30px;
     text-align: right;
+    width: 100%; /* Ensure input takes full width of its cell */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    padding: 0 1px; /* Minimal padding for more space for numbers */
+    font-size: 0.85rem; /* Set font size for clarity */
+    min-width: 0; /* Allow inputs to shrink */
+    max-width: 100%; /* Prevent inputs from overflowing */
+}
+
+.treatment-list-table td:nth-child(2) { /* For quantity cell */
+    text-align: center;
+}
+.treatment-list-table td:nth-child(3) { /* For price cell */
+    text-align: right;
+}
+
+.treatment-list-table td:last-child {
+    text-align: center; /* Center the delete button */
+    padding: 8px 2px; /* Minimal padding for the button column */
 }
 .remove-proc-btn {
     background: none;
@@ -178,6 +235,7 @@ textarea.form-control {
     color: var(--muted);
     cursor: pointer;
     padding: 5px;
+    font-size: 0.9rem; /* Smaller icon */
 }
 .remove-proc-btn:hover {
     color: var(--danger);
@@ -208,6 +266,27 @@ textarea.form-control {
     font-size: 1.2rem;
     text-align: right;
     color: var(--brand);
+}
+
+/* Button styling for save/cancel */
+.treatment-summary-section .btn-primary {
+    background-color: var(--success); /* Green for save */
+    border-color: var(--success);
+    color: white;
+}
+.treatment-summary-section .btn-primary:hover {
+    background-color: #28a745; /* Darker green on hover */
+    border-color: #28a745;
+}
+
+.treatment-summary-section .btn-secondary {
+    background-color: var(--danger); /* Red for cancel */
+    border-color: var(--danger);
+    color: white;
+}
+.treatment-summary-section .btn-secondary:hover {
+    background-color: #dc3545; /* Darker red on hover */
+    border-color: #dc3545;
 }
 
 /* File Upload */
