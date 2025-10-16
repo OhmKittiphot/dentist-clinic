@@ -38,11 +38,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "https://code.jquery.com", "https://cdn.jsdelivr.net", "https://stackpath.bootstrapcdn.com"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Added to allow inline event handlers like onclick
       styleSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", ], // Removed invalid '/' source
-      connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com"],
+      imgSrc: ["'self'", "data:", ], 
+      connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdn.jsdelivr.net"],
     },
   },
 }));

@@ -163,7 +163,7 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script>
+    <script nonce="<%= locals.nonce %>">
     document.addEventListener('DOMContentLoaded', function() {
         // Set current date and time
         const now = new Date();
@@ -184,6 +184,7 @@
 
         document.querySelectorAll('input[name="tooth-type"]').forEach(radio => {
             radio.addEventListener('change', function() {
+                console.log('Tooth type radio changed to:', this.value); // Debugging log
                 adultTeethDiv.style.display = this.value === 'adult' ? 'block' : 'none';
                 childTeethDiv.style.display = this.value === 'child' ? 'block' : 'none';
                 clearToothSelection();
@@ -191,6 +192,7 @@
                 if (activeRowId) {
                     const activeItem = treatmentItems.find(i => i.id === activeRowId);
                     if (activeItem && activeItem.isPerTooth) {
+                         console.log('Resyncing tooth selection for active item:', activeItem.id, activeItem.tooth_no); // Debugging log
                          syncToothSelection(activeItem.tooth_no);
                     }
                 }
@@ -199,21 +201,27 @@
 
         allTeeth.forEach(tooth => {
             tooth.addEventListener('click', function() {
-                if (!activeRowId) return; // Only allow selection if a procedure is active
+                console.log('Tooth clicked:', this.dataset.toothId); // Debugging log
+                if (!activeRowId) {
+                    console.log('No active row, tooth not selectable.'); // Debugging log
+                    return; // Only allow selection if a procedure is active
+                }
 
                 const activeItem = treatmentItems.find(i => i.id === activeRowId);
                 if (!activeItem || !activeItem.isPerTooth) {
-                    // If active procedure is not per-tooth, clear all selections and do not select
+                    console.log('Active item is not per-tooth or not found.'); // Debugging log
                     clearToothSelection();
                     return;
                 }
 
                 this.classList.toggle('selected');
                 updateSelectedTeethForActiveRow();
+                console.log('Tooth selection toggled. Current selected:', Array.from(document.querySelectorAll('.tooth.selected')).map(t => t.dataset.toothId)); // Debugging log
             });
         });
 
         function clearToothSelection() {
+            console.log('Clearing all tooth selections.'); // Debugging log
             allTeeth.forEach(t => t.classList.remove('selected'));
         }
 
@@ -227,20 +235,26 @@
             if(item && item.isPerTooth) {
                 item.tooth_no = selectedTeeth.join(', ');
                 item.qty = selectedTeeth.length > 0 ? selectedTeeth.length : 1; // Qty is count of teeth
+                console.log('Updated active item tooth_no:', item.tooth_no, 'qty:', item.qty); // Debugging log
             } else if (item) {
                 // If not per-tooth, ensure tooth_no is empty
                 item.tooth_no = '';
+                console.log('Active item is not per-tooth, tooth_no cleared.'); // Debugging log
             }
             renderAndCalculate();
         }
         
         function syncToothSelection(tooth_csv) {
+            console.log('syncToothSelection called with:', tooth_csv); // Debugging log
             clearToothSelection();
             if (tooth_csv && tooth_csv.length > 0) {
                 const teeth = tooth_csv.split(',').map(s => s.trim());
                 teeth.forEach(toothId => {
                     const toothEl = document.querySelector(`.tooth[data-tooth-id='${toothId}']`);
-                    if (toothEl) toothEl.classList.add('selected');
+                    if (toothEl) {
+                        toothEl.classList.add('selected');
+                        console.log('Selected tooth:', toothId); // Debugging log
+                    }
                 });
             }
         }
@@ -248,19 +262,20 @@
         // --- Procedure Management ---
         document.querySelectorAll('.quick-add-proc').forEach(btn => {
             btn.addEventListener('click', function() {
-                addProcedure({ // Pass all data from button
+                const procData = {
                     code: this.dataset.code,
                     description: this.dataset.desc,
                     price: parseFloat(this.dataset.price)
-                });
+                };
+                console.log('Quick add procedure clicked:', procData.description); // Debugging log
+                addProcedure(procData);
             });
         });
 
         function addProcedure(procData) {
-            // Determine if it's a per-tooth procedure based on its description/code
             const isPerTooth = procData.description.includes('อุดฟัน') || procData.description.includes('รักษารากฟัน');
+            console.log('addProcedure called. isPerTooth:', isPerTooth); // Debugging log
             
-            // For non-per-tooth procedures, prevent adding if already exists
             if (!isPerTooth && treatmentItems.some(item => item.code === procData.code && !item.isPerTooth)) {
                 alert(`${procData.description} มีอยู่ในรายการแล้ว`);
                 return;
@@ -277,81 +292,131 @@
             };
             treatmentItems.push(newItem);
             setActiveRow(newItem.id);
+            console.log('New item added:', newItem); // Debugging log
         }
 
         window.removeProcedure = function(id) {
+            console.log('Before removal, treatmentItems:', treatmentItems.map(item => item.id)); // Debugging log
             treatmentItems = treatmentItems.filter(item => item.id !== id);
+            console.log('After removal, treatmentItems:', treatmentItems.map(item => item.id)); // Debugging log
+
             if (activeRowId === id) {
-                setActiveRow(null);
+                activeRowId = null; // Ensure activeRowId is cleared
+                clearToothSelection(); // Clear tooth selection if active row is removed
+                // Reset tooth type toggle to adult by default
+                document.getElementById('adult-teeth-radio').checked = true;
+                adultTeethDiv.style.display = 'block';
+                childTeethDiv.style.display = 'none';
+                console.log('Active row removed, reset tooth type to adult and cleared selection.'); // Debugging log
             }
             renderAndCalculate();
+            console.log('renderAndCalculate called after removal.'); // Debugging log
         }
 
         window.updateQty = function(id, newQty) {
+            console.log('Updating qty for:', id, 'to:', newQty); // Debugging log
             const item = treatmentItems.find(i => i.id === id);
-            if (item && !item.isPerTooth) { // Only update if not a per-tooth item
+            if (item && !item.isPerTooth) {
                 item.qty = Math.max(0, parseInt(newQty) || 0);
             }
             renderAndCalculate();
         }
         
         window.updatePrice = function(id, newPrice) {
+            console.log('Updating price for:', id, 'to:', newPrice); // Debugging log
             const item = treatmentItems.find(i => i.id === id);
             if (item) item.price_each = parseFloat(newPrice) || 0;
             renderAndCalculate();
         }
 
         window.setActiveRow = function(id) {
+            console.log('setActiveRow called with:', id); // Debugging log
             activeRowId = id;
             const item = treatmentItems.find(i => i.id === id);
+            console.log('Active item in setActiveRow:', item); // Debugging log
             
-            // Clear all tooth selections first
             clearToothSelection();
+
+            // Clear active state from all rows and set for the clicked row
+            document.querySelectorAll('#treatment-list-body tr').forEach(row => row.classList.remove('active-row'));
+            if (id) {
+                const clickedRow = document.querySelector(`#treatment-list-body tr[data-item-id='${id}']`); // Use data-item-id
+                if (clickedRow) clickedRow.classList.add('active-row');
+            }
 
             if (item && item.isPerTooth) {
                 syncToothSelection(item.tooth_no);
-                // Show correct tooth chart type
-                if (parseInt(item.tooth_no.split(',')[0]) > 50) {
+                const selectedToothIds = item.tooth_no.split(',').map(s => s.trim()).filter(Boolean).map(Number);
+                let isChildToothPresent = selectedToothIds.some(toothNum => toothNum >= 51 && toothNum <= 85);
+                
+                if (isChildToothPresent) {
                     document.getElementById('child-teeth-radio').checked = true;
                     adultTeethDiv.style.display = 'none';
                     childTeethDiv.style.display = 'block';
+                    console.log('Set tooth type to child for item:', id); // Debugging log
                 } else {
                     document.getElementById('adult-teeth-radio').checked = true;
                     adultTeethDiv.style.display = 'block';
                     childTeethDiv.style.display = 'none';
+                    console.log('Set tooth type to adult for item:', id); // Debugging log
                 }
             } else {
-                 // For non-per-tooth items, ensure no teeth are selected and adult chart is default
-                document.getElementById('adult-teeth-radio').checked = true;
+                 document.getElementById('adult-teeth-radio').checked = true;
                 adultTeethDiv.style.display = 'block';
                 childTeethDiv.style.display = 'none';
+                console.log('Set tooth type to adult (default) for non-per-tooth item.'); // Debugging log
             }
-            renderAndCalculate(); // Re-render to show active state
         }
 
         // --- Rendering and Calculation ---
         function renderAndCalculate() {
+            console.log('renderAndCalculate called. Current treatmentItems:', treatmentItems.map(item => item.id)); // Debugging log
             let subtotal = 0;
             if (treatmentItems.length === 0) {
                 treatmentListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ยังไม่มีรายการ</td></tr>';
             } else {
-                treatmentListBody.innerHTML = treatmentItems.map(item => {
+                const newHtml = treatmentItems.map(item => {
                     const total = item.qty * item.price_each;
                     subtotal += total;
                     const activeClass = item.id === activeRowId ? 'active-row' : '';
                     const qtyInputReadonly = item.isPerTooth ? 'readonly' : '';
                     return `
-                        <tr class="${activeClass}" onclick="setActiveRow('${item.id}')">
+                        <tr class="${activeClass}" data-item-id="${item.id}">
                             <td>
                                 ${item.description}
                                 ${item.tooth_no && item.isPerTooth ? `<div class='text-muted small'>ซี่: ${item.tooth_no}</div>` : ''}
                             </td>
-                            <td><input type="number" class="form-control" value="${item.qty}" oninput="updateQty('${item.id}', this.value)" ${qtyInputReadonly}></td>
-                            <td><input type="number" class="form-control" value="${item.price_each.toFixed(2)}" oninput="updatePrice('${item.id}', this.value)"></td>
-                            <td><i class="fas fa-trash-alt remove-proc-btn" onclick="event.stopPropagation(); removeProcedure('${item.id}')"></i></td>
+                            <td><input type="number" class="form-control" value="${item.qty}" data-item-id="${item.id}" data-field="qty" ${qtyInputReadonly}></td>
+                            <td><input type="number" class="form-control" value="${item.price_each.toFixed(2)}" data-item-id="${item.id}" data-field="price_each"></td>
+                            <td><i class="fas fa-trash-alt remove-proc-btn" data-item-id="${item.id}"></i></td>
                         </tr>
                     `;
                 }).join('');
+                treatmentListBody.innerHTML = newHtml;
+
+                // Attach event listeners after rendering
+                treatmentListBody.querySelectorAll('tr[data-item-id]').forEach(row => {
+                    const itemId = row.dataset.itemId;
+                    row.addEventListener('click', () => setActiveRow(itemId));
+
+                    const qtyInput = row.querySelector('input[data-field="qty"]');
+                    if (qtyInput) {
+                        qtyInput.addEventListener('input', (e) => updateQty(itemId, e.target.value));
+                    }
+
+                    const priceInput = row.querySelector('input[data-field="price_each"]');
+                    if (priceInput) {
+                        priceInput.addEventListener('input', (e) => updatePrice(itemId, e.target.value));
+                    }
+
+                    const removeBtn = row.querySelector('.remove-proc-btn');
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent row click from firing
+                            removeProcedure(itemId);
+                        });
+                    }
+                });
             }
             
             subtotalEl.textContent = `฿${subtotal.toFixed(2)}`;
@@ -383,8 +448,5 @@
         renderAndCalculate();
     });
     </script>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
