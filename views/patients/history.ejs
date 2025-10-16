@@ -85,13 +85,21 @@
     </div>
   </div>
 
-<script>
-// THE ROBUST WAY: Embed data directly into a JS variable. Use <%- for raw, unescaped output inside a script tag.
-const allVisitsData = <%- JSON.stringify(visits) %>;
+  <script type="application/json" id="visits-data">
+    <%= JSON.stringify(visits) %>
+  </script>
 
+<script nonce="<%= locals.nonce %>">
 document.addEventListener('DOMContentLoaded', function() {
-    const visitsMap = new Map(allVisitsData.map(v => [v.id.toString(), v]));
+    const visitsDataElement = document.getElementById('visits-data');
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = visitsDataElement.textContent;
+    const allVisitsData = JSON.parse(tempDiv.textContent);
+    console.log('All Visits Data (parsed):', allVisitsData); // Debugging log
     
+    const visitsMap = new Map(allVisitsData.map(v => [v.id.toString(), v]));
+    console.log('Visits Map:', visitsMap); // Debugging log
+
     const visitListBody = document.getElementById('visit-list-body');
     const visitItems = Array.from(visitListBody.querySelectorAll('.visit-item'));
     const detailHeader = document.getElementById('detail-header');
@@ -101,7 +109,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const endDateInput = document.getElementById('end-date-input');
 
     function updateDetails(visitId) {
+        console.log('updateDetails called with visitId:', visitId); // Debugging log
         const visit = visitsMap.get(visitId);
+        console.log('Retrieved visit:', visit); // Debugging log
 
         if (!visit) {
             detailHeader.textContent = 'รายละเอียดการรักษา';
@@ -117,35 +127,43 @@ document.addEventListener('DOMContentLoaded', function() {
         let procedures = [];
         try {
             procedures = JSON.parse(visit.procedures_list_json || '[]');
-        } catch(e) { console.error("Error parsing procedures JSON:", e); }
+        } catch(e) { console.error("Error parsing procedures JSON for visit ID:", visit.id, e); procedures = []; }
 
         let xrays = [];
         try {
             xrays = JSON.parse(visit.xray_images_list_json || '[]');
-        } catch(e) { console.error("Error parsing xrays JSON:", e); }
+        } catch(e) { console.error("Error parsing xrays JSON for visit ID:", visit.id, e); xrays = []; }
 
+        // Refined HTML structure for better UI
         let contentHtml = `
-            <h5>Vital Signs</h5>
-            <p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p>
-            <hr>
-            <h5>รายการหัตถการ</h5>
-            ${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
-            <hr>
-            <h5>ทันตแพทย์ผู้รักษา</h5>
-            <p>ทพ. ${visit.doctor_name || 'N/A'}</p>
-            <hr>
-            <h5>บันทึก/ข้อสังเกต</h5>
-            <p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p>
+            <div class="detail-section">
+                <h5>Vital Signs</h5>
+                <p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p>
+            </div>
+            <div class="detail-section">
+                <h5>รายการหัตถการ</h5>
+                ${procedures.length > 0 ? 
+                    `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
+            </div>
+            <div class="detail-section">
+                <h5>ทันตแพทย์ผู้รักษา</h5>
+                <p>ทพ. ${visit.doctor_name || 'N/A'}</p>
+            </div>
+            <div class="detail-section">
+                <h5>บันทึก/ข้อสังเกต</h5>
+                <p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p>
+            </div>
         `;
 
         if (xrays.length > 0) {
              contentHtml += `
-            <hr>
-            <h5>X-Ray Images</h5>
-            <div class="row">${xrays.map(path => `
-                <div class="col-md-4 mb-2">
-                    <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a>
-                </div>`).join('')}
+            <div class="detail-section">
+                <h5>X-Ray Images</h5>
+                <div class="row">${xrays.map(path => `
+                    <div class="col-md-4 mb-2">
+                        <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a>
+                    </div>`).join('')}
+                </div>
             </div>`;
         }
 

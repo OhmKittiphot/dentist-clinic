@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
+const crypto = require('crypto');
 
 dotenv.config();
 
@@ -20,12 +21,32 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // Layout helper
 const layoutSupport = require('./layout-support');
 
+// Nonce middleware
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
 // Middlewares
 app.use(layoutSupport);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan('dev'));
-app.use(helmet());
+
+// Configure Helmet with CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+      styleSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", ], // Removed invalid '/' source
+      connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com"],
+    },
+  },
+}));
+
 app.use(compression());
 
 // Routes

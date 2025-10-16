@@ -1,66 +1,108 @@
-/* Visit Form Custom Styles */
+/* New, simplified styles based on the user's latest screenshot */
+
+:root {
+    --page-bg: #f6f9fc;
+    --card-bg: #ffffff;
+    --text-main: #14233b;
+    --text-muted: #6b7a8a;
+    --border-light: #e6eef6;
+    --brand-blue: #2f6fb7;
+    --toolbar-bg: #eaf2fa;
+    --shadow: 0 4px 12px rgba(21, 35, 59, 0.05);
+}
+
 body {
-    background-color: #f8f9fa;
+    background-color: var(--page-bg);
+    color: var(--text-main);
 }
 
 .form-section {
-    background-color: #fff;
-    border-radius: 8px;
+    background-color: var(--card-bg);
+    border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
 }
 
-.patient-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 0;
-    background: none;
-    box-shadow: none;
+.patient-card-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 1rem;
 }
 
-.patient-info p {
+.patient-info-display p {
     margin-bottom: 4px;
-    color: #6c757d;
+    color: var(--text-muted);
 }
 
-.patient-info p strong {
-    color: #343a40;
+.patient-info-display p strong {
+    color: var(--text-main);
     margin-right: 8px;
 }
 
-.top-card .form-row {
-    align-items: flex-end;
+.top-visit-info .form-group {
+    margin-bottom: 1rem;
+}
+
+.top-visit-info label {
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
 }
 
 .bp-input-group {
     display: flex;
     align-items: center;
+    gap: 8px;
 }
 
 .bp-input-group input {
     width: 80px;
     text-align: center;
+    height: 38px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 0 10px;
+    background: var(--card-bg);
 }
 
 .bp-input-group span {
-    margin: 0 8px;
-    color: #6c757d;
-    font-size: 1.2em;
+    color: var(--text-muted);
+    font-size: 1em;
+}
+
+.clinical-data-section h5 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 1rem;
 }
 
 .procedure-quick-select .btn {
     margin-right: 8px;
     margin-bottom: 8px;
+    background-color: var(--toolbar-bg);
+    border-color: var(--border-light);
+    color: var(--text-main);
+    font-weight: 500;
 }
 
-.tooth-chart-container {
-    margin-top: 16px;
+.procedure-quick-select .btn:hover {
+    background-color: #dce9f8;
 }
 
-.tooth-type-toggle {
-    margin-bottom: 16px;
+.tooth-chart-section h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+}
+
+.tooth-type-toggle .form-check-label {
+    font-weight: 500;
+    color: var(--text-main);
 }
 
 .tooth-row {
@@ -72,7 +114,7 @@ body {
 .tooth-row .tooth {
     width: 45px;
     height: 45px;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--border-light);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -80,72 +122,120 @@ body {
     margin: 0 4px;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-    background-color: #fff;
+    background-color: var(--card-bg);
+    font-weight: 600;
+    color: var(--text-main);
 }
 
 .tooth-row .tooth:hover {
-    background-color: #e9ecef;
+    background-color: var(--page-bg);
 }
 
 .tooth-row .tooth.selected {
-    background-color: #007bff;
-    color: #fff;
-    border-color: #007bff;
+    background-color: var(--brand-blue);
+    color: var(--card-bg);
+    border-color: var(--brand-blue);
 }
 
 .child-teeth {
-    display: none; /* Initially hidden */
+    display: none;
+}
+
+.treatment-summary-section h5 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 1rem;
 }
 
 .treatment-list-table {
     width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
-.treatment-list-table th, .treatment-list-table td {
-    padding: 12px 8px;
+.treatment-list-table th,
+.treatment-list-table td {
+    padding: 10px 8px;
     vertical-align: middle;
+    font-size: 0.9rem;
 }
 
-.treatment-list-table thead {
-    border-bottom: 2px solid #dee2e6;
-    color: #495057;
+.treatment-list-table thead th {
+    background-color: var(--toolbar-bg);
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-main);
+    font-weight: 600;
+    text-align: left;
 }
 
-.treatment-list-table tbody tr:not(.total-row) {
-    border-bottom: 1px solid #f1f3f5;
+.treatment-list-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
     transition: background-color 0.2s;
 }
 
+.treatment-list-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.treatment-list-table tbody tr:hover {
+    background-color: var(--page-bg);
+}
+
 .treatment-list-table tbody tr.active-row {
-    background-color: #e6f2ff; /* Light blue background for active row */
+    background-color: #e6f2ff; /* Light blue for active row */
+    border-left: 3px solid var(--brand-blue);
 }
 
 .treatment-list-table input.form-control {
     height: calc(1.5em + .5rem + 2px);
     padding: .25rem .5rem;
     max-width: 100px;
-}
-
-.treatment-list-table .tooth-display {
-    font-weight: 500;
+    border-radius: 6px;
 }
 
 .remove-proc-btn {
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: #dc3545;
     cursor: pointer;
 }
 
-.cost-summary {
+.cost-summary-table {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.cost-summary-table td {
+    padding: 8px 0;
+    font-size: 1rem;
+}
+
+.cost-summary-table .label {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.cost-summary-table .value {
     text-align: right;
+    font-weight: 600;
+    color: var(--text-main);
 }
 
-.cost-summary h4, .cost-summary h5 {
-    margin-bottom: 1rem;
+.cost-summary-table .total-label {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--brand-blue);
 }
 
-.cost-summary .total-amount {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #28a745;
+.cost-summary-table .total-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--brand-blue);
 }
+
+.custom-file-label {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
