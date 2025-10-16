@@ -1,241 +1,239 @@
-/* New, simplified styles based on the user's latest screenshot */
+/* public/css/visit-form.css */
 
+/* Use variables from main.css */
 :root {
-    --page-bg: #f6f9fc;
-    --card-bg: #ffffff;
-    --text-main: #14233b;
-    --text-muted: #6b7a8a;
-    --border-light: #e6eef6;
-    --brand-blue: #2f6fb7;
-    --toolbar-bg: #eaf2fa;
-    --shadow: 0 4px 12px rgba(21, 35, 59, 0.05);
+    --brand-light: #eaf1f8;
+    --brand-lighter: #f5f8fb;
+    --danger: #e53935;
+    --danger-light: #fbe9e7;
 }
 
-body {
-    background-color: var(--page-bg);
-    color: var(--text-main);
-}
-
-.form-section {
-    background-color: var(--card-bg);
-    border-radius: 12px;
-    padding: 24px;
+/* General Card Styling */
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
     margin-bottom: 24px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-light);
+    overflow: hidden; /* Ensures child elements respect border radius */
 }
 
-.patient-card-header {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 1rem;
-}
-
-.patient-info-display p {
-    margin-bottom: 4px;
-    color: var(--text-muted);
-}
-
-.patient-info-display p strong {
-    color: var(--text-main);
-    margin-right: 8px;
-}
-
-.top-visit-info .form-group {
-    margin-bottom: 1rem;
-}
-
-.top-visit-info label {
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 0.5rem;
-}
-
-.bp-input-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.bp-input-group input {
-    width: 80px;
-    text-align: center;
-    height: 38px;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 0 10px;
-    background: var(--card-bg);
-}
-
-.bp-input-group span {
-    color: var(--text-muted);
-    font-size: 1em;
-}
-
-.clinical-data-section h5 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 1rem;
-}
-
-.procedure-quick-select .btn {
-    margin-right: 8px;
-    margin-bottom: 8px;
-    background-color: var(--toolbar-bg);
-    border-color: var(--border-light);
-    color: var(--text-main);
-    font-weight: 500;
-}
-
-.procedure-quick-select .btn:hover {
-    background-color: #dce9f8;
-}
-
-.tooth-chart-section h6 {
+.card-header {
+    background-color: var(--brand-lighter);
+    padding: 12px 20px;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
 }
 
-.tooth-type-toggle .form-check-label {
-    font-weight: 500;
-    color: var(--text-main);
+.card-body {
+    padding: 20px;
+}
+.card-footer {
+    background-color: var(--brand-lighter);
+    padding: 16px 20px;
+    border-top: 1px solid var(--line);
 }
 
+/* Patient Info Display */
+.patient-info-display {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px 16px;
+}
+.patient-info-display p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Form inputs styling to match main theme */
+.form-control {
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 10px;
+    background:#fff;
+}
+textarea.form-control {
+    height: auto;
+    padding: 10px;
+}
+
+
+/* Quick Procedure Buttons (Chips) */
+.procedure-quick-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.quick-add-proc {
+    background-color: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-add-proc:hover {
+    background-color: var(--brand-light);
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+/* Custom Procedure Adder */
+.custom-procedure-adder {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.custom-procedure-adder input[type="text"] {
+    flex-grow: 1;
+}
+.custom-procedure-adder input[type="number"] {
+    width: 100px;
+}
+.custom-procedure-adder .btn-info {
+    background-color: var(--brand);
+    border-color: var(--brand);
+}
+
+/* Tooth Chart */
+.tooth-chart-container {
+    background-color: var(--brand-lighter);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+}
+.tooth-type-toggle {
+    margin-bottom: 16px;
+}
 .tooth-row {
     display: flex;
     justify-content: center;
-    margin-bottom: 8px;
+    gap: 5px;
+    margin-bottom: 5px;
 }
-
-.tooth-row .tooth {
-    width: 45px;
-    height: 45px;
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
+.tooth {
+    width: 35px;
+    height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    background-color: var(--card-bg);
-    font-weight: 600;
-    color: var(--text-main);
+    font-size: 0.9rem;
+    background-color: #fff;
+    transition: all 0.2s ease;
 }
-
-.tooth-row .tooth:hover {
-    background-color: var(--page-bg);
+.tooth:hover {
+    border-color: var(--brand);
+    color: var(--brand);
 }
-
-.tooth-row .tooth.selected {
-    background-color: var(--brand-blue);
-    color: var(--card-bg);
-    border-color: var(--brand-blue);
+.tooth.selected {
+    background-color: var(--brand);
+    color: white;
+    border-color: var(--brand);
 }
 
 .child-teeth {
-    display: none;
+    display: none; /* Hidden by default */
 }
 
-.treatment-summary-section h5 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 1rem;
-}
 
+/* Right Column Summary */
+.treatment-summary-section .card {
+    position: sticky;
+    top: 20px;
+}
 .treatment-list-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
+    border-collapse: collapse;
 }
-
-.treatment-list-table th,
-.treatment-list-table td {
-    padding: 10px 8px;
-    vertical-align: middle;
-    font-size: 0.9rem;
-}
-
-.treatment-list-table thead th {
-    background-color: var(--toolbar-bg);
-    border-bottom: 1px solid var(--border-light);
-    color: var(--text-main);
-    font-weight: 600;
+.treatment-list-table th, .treatment-list-table td {
+    padding: 12px 16px;
     text-align: left;
+    border-bottom: 1px solid var(--line);
 }
-
-.treatment-list-table tbody tr {
-    border-bottom: 1px solid var(--border-light);
-    transition: background-color 0.2s;
+.treatment-list-table th {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 500;
+    padding-top: 0;
 }
-
-.treatment-list-table tbody tr:last-child {
+.treatment-list-table tr:last-child td {
     border-bottom: none;
 }
-
-.treatment-list-table tbody tr:hover {
-    background-color: var(--page-bg);
+.treatment-list-table .form-control {
+    height: 30px;
+    text-align: right;
 }
-
-.treatment-list-table tbody tr.active-row {
-    background-color: #e6f2ff; /* Light blue for active row */
-    border-left: 3px solid var(--brand-blue);
-}
-
-.treatment-list-table input.form-control {
-    height: calc(1.5em + .5rem + 2px);
-    padding: .25rem .5rem;
-    max-width: 100px;
-    border-radius: 6px;
-}
-
 .remove-proc-btn {
-    font-size: 1rem;
-    color: #dc3545;
+    background: none;
+    border: none;
+    color: var(--muted);
     cursor: pointer;
+    padding: 5px;
+}
+.remove-proc-btn:hover {
+    color: var(--danger);
+}
+.treatment-list-table tr.active-row {
+    background-color: var(--brand-light);
 }
 
 .cost-summary-table {
     width: 100%;
-    margin-top: 1rem;
 }
-
 .cost-summary-table td {
-    padding: 8px 0;
-    font-size: 1rem;
+    padding: 6px 0;
 }
-
 .cost-summary-table .label {
-    color: var(--text-main);
-    font-weight: 600;
+    color: var(--muted);
 }
-
 .cost-summary-table .value {
     text-align: right;
     font-weight: 600;
-    color: var(--text-main);
 }
-
 .cost-summary-table .total-label {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--brand-blue);
+    font-weight: bold;
+    font-size: 1.1rem;
 }
-
 .cost-summary-table .total-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--brand-blue);
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-align: right;
+    color: var(--brand);
 }
 
-.custom-file-label {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+/* File Upload */
+.file-drop-area {
+    border: 2px dashed var(--line);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
-
+.file-drop-area:hover {
+    border-color: var(--brand);
+    background-color: var(--brand-lighter);
+}
+.file-drop-area input[type="file"] {
+    display: none;
+}
+#file-list-display .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background-color: var(--brand-lighter);
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+}

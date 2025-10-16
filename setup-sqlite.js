@@ -1,84 +1,87 @@
-
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./database.sqlite');
 
-db.serialize(() => {
-  // Create patients table
-  db.run(`CREATE TABLE IF NOT EXISTS patients (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    clinic_number TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    gender TEXT,
-    age INTEGER,
-    phone TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  // Create visits table
-  db.run(`CREATE TABLE IF NOT EXISTS visits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id INTEGER,
-    visit_date DATE,
-    doctor_name TEXT,
-    bp_sys INTEGER,
-    bp_dia INTEGER,
-    clinical_notes TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patients (id)
-  )`);
-
-  // Create procedures table
-  db.run(`CREATE TABLE IF NOT EXISTS procedures (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    visit_id INTEGER,
-    code TEXT,
-    description TEXT,
-    tooth_no TEXT,
-    qty INTEGER,
-    price_each REAL,
-    FOREIGN KEY (visit_id) REFERENCES visits (id)
-  )`);
-
-  // Create xray_images table
-  db.run(`CREATE TABLE IF NOT EXISTS xray_images (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    visit_id INTEGER,
-    image_url TEXT,
-    note TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (visit_id) REFERENCES visits (id)
-  )`);
-
-  // Insert sample data
-  const patients = [
-    { clinic_number: 'HN001', first_name: 'John', last_name: 'Doe', gender: 'M', age: 30, phone: '123-456-7890' },
-    { clinic_number: 'HN002', first_name: 'Jane', last_name: 'Smith', gender: 'F', age: 25, phone: '098-765-4321' }
-  ];
-
-  patients.forEach(patient => {
-    db.run('INSERT INTO patients (clinic_number, first_name, last_name, gender, age, phone) VALUES (?, ?, ?, ?, ?, ?)',
-      [patient.clinic_number, patient.first_name, patient.last_name, patient.gender, patient.age, patient.phone], function(err) {
-        if (err) {
-          return console.log(err.message);
-        }
-        const patient_id = this.lastID;
-        if (patient_id === 1) {
-          db.run('INSERT INTO visits (patient_id, visit_date, doctor_name, bp_sys, bp_dia, clinical_notes) VALUES (?, ?, ?, ?, ?, ?)',
-            [patient_id, '2024-01-10', 'Dr. Apple', 120, 80, 'Regular check-up'], function(err) {
-              if (err) {
-                return console.log(err.message);
-              }
-              const visit_id = this.lastID;
-              db.run('INSERT INTO procedures (visit_id, code, description, tooth_no, qty, price_each) VALUES (?, ?, ?, ?, ?, ?)',
-                [visit_id, 'C001', 'Cleaning', '1-8', 1, 50.00]);
-              db.run('INSERT INTO xray_images (visit_id, image_url, note) VALUES (?, ?, ?)',
-                [visit_id, '/public/css/logo.png', 'X-ray of teeth']);
-            });
-        }
-    });
-  });
-
-  console.log('Sample data inserted.');
+// open the database
+let db = new sqlite3.Database('./clinic.db', (err) => {
+  if (err) {
+    console.error(err.message);
+  }
+  console.log('Connected to the clinic database.');
 });
 
-db.close();
+const createTables = () => {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS patients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT,
+      gender TEXT,
+      birth_date TEXT,
+      phone_number TEXT,
+      clinic_number TEXT UNIQUE
+    );
+    CREATE TABLE IF NOT EXISTS visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER,
+      visit_date TEXT,
+      doctor_name TEXT,
+      bp_sys INTEGER,
+      bp_dia INTEGER,
+      clinical_notes TEXT,
+      FOREIGN KEY(patient_id) REFERENCES patients(id)
+    );
+    CREATE TABLE IF NOT EXISTS procedures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      visit_id INTEGER,
+      code TEXT,
+      description TEXT,
+      tooth_no TEXT,
+      qty INTEGER,
+      price_each REAL,
+      FOREIGN KEY(visit_id) REFERENCES visits(id)
+    );
+    CREATE TABLE IF NOT EXISTS xray_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      visit_id INTEGER,
+      image_path TEXT,
+      FOREIGN KEY(visit_id) REFERENCES visits(id)
+    );
+    CREATE TABLE IF NOT EXISTS procedure_codes (
+      code TEXT PRIMARY KEY,
+      description TEXT NOT NULL,
+      price REAL
+    );
+  `;
+  db.exec(sql);
+};
+
+const insertSampleData = () => {
+    const sampleProcedures = [
+        { code: 'T101', description: 'ขูดหินปูน', price: 900 },
+        { code: 'T102', description: 'อุดฟัน', price: 800 },
+        { code: 'T103', description: 'ถอนฟัน', price: 1000 },
+        { code: 'T104', description: 'รักษารากฟัน', price: 5000 },
+        { code: 'X201', description: 'X-Ray', price: 200 },
+        { code: 'P301', description: 'ฟอกสีฟัน', price: 3500 }
+    ];
+
+    const sql = `INSERT OR IGNORE INTO procedure_codes (code, description, price) VALUES (?, ?, ?)`;
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION;');
+        sampleProcedures.forEach(proc => {
+            db.run(sql, [proc.code, proc.description, proc.price]);
+        });
+        db.run('COMMIT;');
+    });
+    console.log("Sample data inserted.");
+};
+
+createTables();
+insertSampleData();
+
+db.close((err) => {
+  if (err) {
+    console.error(err.message);
+  }
+  console.log('Close the database connection.');
+});

@@ -127,6 +127,34 @@ document.addEventListener('DOMContentLoaded', function() {
         let procedures = [];
         try {
             procedures = JSON.parse(visit.procedures_list_json || '[]');
+            // Filter out procedures that are effectively empty
+            procedures = procedures.filter(p => 
+                (p.description && p.description.trim() !== '') || 
+                (p.tooth_no && p.tooth_no.trim() !== '')
+            );
+            // Sort procedures by tooth_no numerically, handling non-numeric values gracefully
+            procedures.sort((a, b) => {
+                const toothA = parseInt(a.tooth_no);
+                const toothB = parseInt(b.tooth_no);
+
+                const isANumber = !isNaN(toothA) && a.tooth_no !== '';
+                const isBNumber = !isNaN(toothB) && b.tooth_no !== '';
+
+                if (isANumber && isBNumber) {
+                    return toothA - toothB;
+                } else if (isANumber) {
+                    return -1; // A is a number, B is not, so A comes first
+                } else if (isBNumber) {
+                    return 1; // B is a number, A is not, so B comes first
+                } else {
+                    // For non-numeric or empty tooth_no, sort by description as a fallback
+                    const descA = (a.description || '').toLowerCase();
+                    const descB = (b.description || '').toLowerCase();
+                    if (descA < descB) return -1;
+                    if (descA > descB) return 1;
+                    return 0;
+                }
+            });
         } catch(e) { console.error("Error parsing procedures JSON for visit ID:", visit.id, e); procedures = []; }
 
         let xrays = [];
