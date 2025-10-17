@@ -1,11 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
+const DB_PATH = process.env.NODE_ENV === 'test' ? ':memory:' : './Dentalcare.db';
 
-// Connect to the SQLite database
-const db = new sqlite3.Database('./Dental.db', (err) => {
+const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
-    console.error(err.message);
+    console.error("Error opening database", err.message);
+  } else {
+    console.log("Connected to the SQLite database.");
   }
-  console.log('Connected to the Dental.db database.');
 });
 
 module.exports = db;

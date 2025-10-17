@@ -14,7 +14,6 @@
 </head>
 <body>
   <div class="app">
-    <%- include('../partials/navbar', { active: 'patients' }) %>
 
     <main class="main-content">
       <div class="form-container">
@@ -114,7 +113,7 @@
           </section>
 
           <footer class="form-actions">
-            <a href="/patients/<%= patient.id %>/history" class="btn btn-secondary">ยกเลิก</a>
+            <a href="/patients" class="btn btn-secondary">ยกเลิก</a>
             <button type="submit" class="btn btn-primary">
               <i class="fa-solid fa-save"></i>
               <span>บันทึกข้อมูล</span>

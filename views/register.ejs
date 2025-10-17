@@ -8,11 +8,7 @@
     <link rel="stylesheet" href="/public/css/styles.css" />
     <style>
         .relative { position: relative; }
-        .toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: 0; cursor: pointer; opacity: .75; }
-        .toggle:hover { opacity: 1; }
-        .bar { height: 8px; background: #e8f4fd; border-radius: 999px; overflow: hidden; margin-top: 6px; }
-        .bar span { display: block; height: 100%; width: 0; background: #22c55e; transition: width .25s; }
-        .alert { color: #fff; background: #dc3545; padding: 10px; border-radius: 6px; margin-bottom: 12px; display: none; }
+        .alert { color: #fff; background: #dc3545; padding: 10px; border-radius: 6px; margin-bottom: 12px; }
         .grid-2 { display: grid; gap: 14px; }
         @media(min-width:900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
         .actions { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 16px; }
@@ -33,9 +29,12 @@
             </div>
 
             <div class="card">
-                <div id="form-error" class="alert"></div>
+                <% if (typeof message !== 'undefined' && message) { %>
+                    <div class="alert"><%= message %></div>
+                <% } %>
 
-                <form id="registerForm" oninput="updateStrength('password')">
+                <form method="POST" action="/register">
+                    <input type="hidden" name="from" value="<%= from %>">
                     <div class="grid-3">
                         <div>
                             <label for="pre_name">คำนำหน้าชื่อ</label>
@@ -117,92 +116,26 @@
                     <div class="grid-2">
                         <div>
                             <label for="password">รหัสผ่าน</label>
-                            <div class="relative">
-                                <input type="password" id="password" name="password" required placeholder="อย่างน้อย 8 ตัวอักษร">
-                                <button class="toggle" type="button" onclick="toggleVisibility('password')">👁️</button>
-                            </div>
-                            <div class="bar"><span id="bar"></span></div>
+                            <input type="password" id="password" name="password" required placeholder="อย่างน้อย 8 ตัวอักษร">
                         </div>
                         <div>
                             <label for="confirm_password">ยืนยันรหัสผ่าน</label>
-                            <div class="relative">
-                                <input type="password" id="confirm_password" name="confirm_password" required placeholder="พิมพ์รหัสผ่านอีกครั้ง">
-                                <button class="toggle" type="button" onclick="toggleVisibility('confirm_password')">👁️</button>
-                            </div>
+                            <input type="password" id="confirm_password" name="confirm_password" required placeholder="พิมพ์รหัสผ่านอีกครั้ง">
                         </div>
                     </div>
 
                     <div class="actions">
-                        <a class="link" href="/login">← กลับเข้าสู่ระบบ</a>
+                        <% if (from === 'patients') { %>
+                            <a class="link" href="/patients">← กลับหน้าเวชระเบียน</a>
+                        <% } else { %>
+                            <a class="link" href="/login">กลับไปหน้าล็อกอิน</a>
+                        <% } %>
                         <button class="primary" type="submit">สร้างบัญชี</button>
                     </div>
                 </form>
             </div>
         </section>
     </main>
-
-    <script>
-        function strength(pw) {
-            let s = 0;
-            if (pw.length >= 8) s++;
-            if (/[A-Z]/.test(pw)) s++;
-            if (/[a-z]/.test(pw)) s++;
-            if (/[0-9]/.test(pw)) s++;
-            if (/[^A-Za-z0-9]/.test(pw)) s++;
-            return Math.min(s, 4);
-        }
-
-        function toggleVisibility(id) {
-            const el = document.getElementById(id);
-            el.type = el.type === 'password' ? 'text' : 'password';
-        }
-
-        function updateStrength(id) {
-            const el = document.getElementById(id);
-            const bar = document.getElementById('bar');
-            if (!el || !bar) return;
-            const s = strength(el.value);
-            bar.style.width = ['0%', '25%', '50%', '75%', '100%'][s];
-        }
-
-        document.getElementById('registerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const form = e.target;
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            const errorDiv = document.getElementById('form-error');
-
-            // Client-side validation
-            if (data.password !== data.confirm_password) {
-                errorDiv.style.display = 'block';
-                errorDiv.textContent = 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน';
-                return;
-            }
-            errorDiv.style.display = 'none';
-
-            try {
-                const response = await fetch('/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    alert(result.message);
-                    window.location.href = '/login';
-                } else {
-                    errorDiv.style.display = 'block';
-                    errorDiv.textContent = result.message || 'เกิดข้อผิดพลาดที่ไม่รู้จัก';
-                }
-            } catch (error) {
-                errorDiv.style.display = 'block';
-                errorDiv.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์';
-            }
-        });
-    </script>
 </body>
 
 </html>

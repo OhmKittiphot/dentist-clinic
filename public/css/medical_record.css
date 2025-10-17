@@ -244,3 +244,32 @@ a {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Alert */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-success {
+    background-color: #e6f4ea;
+    color: #3d8b56;
+    border: 1px solid #cce8d4;
+}
+
+.alert .close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.alert .close:hover {
+    opacity: 1;
+}

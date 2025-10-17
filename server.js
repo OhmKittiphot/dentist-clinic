@@ -58,6 +58,7 @@ const patientsRouter = require('./routes/patients');
 const visitsRouter = require('./routes/visits');
 const uploadRouter = require('./routes/upload');
 const historyRouter = require('./routes/history');
+const patientRouter = require('./routes/patient'); // Added this line
 
 // --- Public & Debug Routes ---
 
@@ -90,6 +91,7 @@ app.use('/patients', authenticateToken, patientsRouter);
 app.use('/visits', authenticateToken, visitsRouter);
 app.use('/upload', authenticateToken, uploadRouter);
 app.use('/', authenticateToken, historyRouter);
+app.use('/', authenticateToken, patientRouter); // Added this line
 
 
 // --- System & Error Handling ---

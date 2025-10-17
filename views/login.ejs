@@ -17,11 +17,11 @@
     </div>
 
     <div class="card">
-       <% if (message) { %>
-  <div class="alert" style="color:#fff; background-color:#dc3545; padding:10px; border-radius:4px; text-align: center;">
-    <%= message %>
-  </div>
-<% } %>
+      <% if (message) { %>
+        <div class="alert <%= message.includes('สำเร็จ') ? 'alert-success' : 'alert-danger' %>">
+          <%= message %>
+        </div>
+      <% } %>
       <form method="post" action="/login">
         <label>รหัสบัตรประชาชน
           <input name="citizen_id" required maxlength="13">
@@ -31,7 +31,7 @@
         </label>
         <div class="actions">
           <button class="primary" type="submit">เข้าสู่ระบบ</button>
-          <a class="link" href="/register">สมัครสมาชิก</a>
+          <a class="link" href="/register?from=login">สมัครสมาชิก</a>
         </div>
       </form>
     </div>

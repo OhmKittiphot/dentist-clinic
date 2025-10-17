@@ -2,9 +2,16 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../db');
+const jwt = require('jsonwebtoken');
 
+// Render the registration page
 router.get('/register', (req, res) => {
-  res.render('register', { title: 'สมัครสมาชิก | Dentalcare Clinic' });
+  const from = req.query.from || 'login'; // Default to 'login'
+  res.render('register', { 
+    title: 'สมัครสมาชิก | Dentalcare Clinic', 
+    message: null, 
+    from: from // Pass the 'from' parameter to the template
+  });
 });
 
 router.post('/register', async (req, res) => {
@@ -14,25 +21,34 @@ router.post('/register', async (req, res) => {
     religion, drug_allergy 
   } = req.body;
 
-  // Basic validation
+  // Determine where to redirect or what link to show on error
+  const from = req.body.from || 'login'; 
+
+  const renderError = (message) => {
+    res.render('register', { 
+      title: 'สมัครสมาชิก | Dentalcare Clinic', 
+      message, 
+      from: from // Pass 'from' back to the template on error
+    });
+  };
+
   if (!citizen_id || !password || !first_name || !last_name) {
-    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลที่จำเป็น: เลขบัตรประชาชน, รหัสผ่าน, ชื่อ และนามสกุล' });
+    return renderError('กรุณากรอกข้อมูลที่จำเป็น: เลขบัตรประชาชน, รหัสผ่าน, ชื่อ และนามสกุล');
   }
   if (password !== confirm_password) {
-    return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
+    return renderError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert into users table
     const userSql = `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'patient')`;
     db.run(userSql, [citizen_id, hashedPassword], function(err) {
       if (err) {
         if (err.code === 'SQLITE_CONSTRAINT') {
-          return res.status(409).json({ success: false, message: 'เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว' });
+          return renderError('เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว');
         }
-        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลงทะเบียนผู้ใช้' });
+        return renderError('เกิดข้อผิดพลาดในการลงทะเบียนผู้ใช้');
       }
 
       const userId = this.lastID;
@@ -50,23 +66,24 @@ router.post('/register', async (req, res) => {
 
       db.run(patientSql, patientParams, function(err) {
         if (err) {
-          return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างข้อมูลผู้ป่วย' });
+          return renderError('เกิดข้อผิดพลาดในการสร้างข้อมูลผู้ป่วย');
         }
-        res.json({ success: true, message: 'ลงทะเบียนสำเร็จ' });
+        res.redirect('/login?success=registration_successful');
       });
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดของเซิร์ฟเวอร์' });
+    renderError('เกิดข้อผิดพลาดของเซิร์ฟเวอร์');
   }
 });
 
-// --- Other auth routes like login, logout ---
-
 router.get('/login', (req, res) => {
-  res.render('login', { title: 'เข้าสู่ระบบ | Dentalcare Clinic', message: null });
+  const { success } = req.query;
+  let message = null;
+  if (success === 'registration_successful') {
+    message = 'การสมัครสมาชิกสำเร็จแล้ว! กรุณาเข้าสู่ระบบ';
+  }
+  res.render('login', { title: 'เข้าสู่ระบบ | Dentalcare Clinic', message });
 });
-
-const jwt = require('jsonwebtoken');
 
 router.post('/login', (req, res) => {
   const { citizen_id, password } = req.body;
@@ -105,8 +122,10 @@ router.post('/login', (req, res) => {
 
       if (row.role === 'dentist' || row.role === 'staff') {
         res.redirect('/patients');
+      } else if (row.role === 'patient') {
+        res.redirect('/patient-dashboard');
       } else {
-        res.redirect('/login'); // Or a patient dashboard later
+        res.redirect('/login');
       }
     });
   });

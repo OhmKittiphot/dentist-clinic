@@ -21,6 +21,14 @@
     </aside>
 
     <main class="main">
+
+      <% if (successMessage) { %>
+        <div class="alert alert-success" id="success-alert">
+          <%= successMessage %>
+          <button type="button" class="close" onclick="document.getElementById('success-alert').style.display='none'">&times;</button>
+        </div>
+      <% } %>
+
       <div class="toolbar">
         <form class="search" role="search" method="GET" action="/patients">
           <input type="search" name="search" placeholder="ค้นหาผู้ป่วย ชื่อ/นามสกุล/หมายเลขคลินิก" aria-label="Search" value="<%= searchQuery %>" />
@@ -31,18 +39,22 @@
           </button>
         </form>
         <div class="spacer"></div>
-        <a class="btn btn-success" href="/register">
-          <span class="plus">+</span> สมัครสมาชิกผู้ป่วยใหม่
-        </a>
+        <% if (userRole === 'staff') { %>
+          <a class="btn btn-success" href="/register?from=patients">
+            <span class="plus">+</span> สมัครสมาชิกผู้ป่วยใหม่
+          </a>
+        <% } %>
       </div>
 
       <section class="card" aria-label="ตารางเวชระเบียน">
         <header class="table-head">
-          <div>Clinic number</div>
+          <div>Clinic Number</div>
           <div>ชื่อ</div>
           <div>นามสกุล</div>
           <div>วันที่เพิ่มข้อมูล</div>
-          <div>แก้ไข</div>
+          <% if (userRole === 'staff') { %>
+            <div>แก้ไข</div>
+          <% } %>
           <div>ประวัติการรักษา</div>
         </header>
         <div class="table-body">
@@ -55,7 +67,9 @@
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
               <div><%= p.created_at %></div>
-              <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
+              <% if (userRole === 'staff') { %>
+                <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
+              <% } %>
               <div>
                 <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>
                 &nbsp;|&nbsp;

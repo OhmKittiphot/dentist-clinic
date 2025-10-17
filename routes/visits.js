@@ -22,7 +22,7 @@ const upload = multer({ storage: storage });
 // (GET /new/:patient_id) - Display form to add a new visit
 router.get('/new/:patient_id', allowRoles('dentist'), (req, res, next) => {
   const patient_id = req.params.patient_id;
-  const patientSql = `SELECT *, printf('HN%04d', id) as clinic_number, (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age FROM patients WHERE id = ?`;
+  const patientSql = `SELECT *, printf('CN%04d', id) as clinic_number, (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age FROM patients WHERE id = ?`;
   const proceduresSql = `SELECT * FROM procedure_codes ORDER BY description`;
 
   db.get(patientSql, [patient_id], (err, patient) => {

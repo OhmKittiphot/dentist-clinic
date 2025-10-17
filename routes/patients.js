@@ -9,12 +9,14 @@ router.get('/', (req, res, next) => {
     const currentPage = parseInt(req.query.page) || 1;
     const limit = 15; // Number of patients per page
     const offset = (currentPage - 1) * limit;
+    const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
 
     // Base queries
     let countSql = `SELECT COUNT(id) AS count FROM patients`;
     let sql = `
         SELECT id, pre_name, first_name, last_name, 
-               printf('HN%04d', id) as clinic_number, 
+               printf('CN%04d', id) as clinic_number, 
+               strftime('%d/%m/%Y', created_at) as created_at,
                (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age
         FROM patients
     `;
@@ -23,7 +25,7 @@ router.get('/', (req, res, next) => {
     
     // Add search conditions if a query is present
     if (searchQuery) {
-        const whereClause = ` WHERE first_name LIKE ? OR last_name LIKE ? OR printf('HN%04d', id) LIKE ? `;
+        const whereClause = ` WHERE first_name LIKE ? OR last_name LIKE ? OR printf('CN%04d', id) LIKE ? `;
         countSql += whereClause;
         sql += whereClause;
         const searchTerm = `%${searchQuery}%`;
@@ -50,19 +52,21 @@ router.get('/', (req, res, next) => {
             res.render('patients/index', { 
                 patients: patients, 
                 user: req.user,
-                userRole: req.user.role,
+                userRole: req.user.role, // Pass user role to the template
                 searchQuery: searchQuery,
                 currentPage: currentPage,
-                totalPages: totalPages // Crucial for pagination controls
+                totalPages: totalPages,
+                successMessage: successMessage
             });
         });
     });
 });
 
 // GET /patients/:id/edit - Show the form to edit a patient
+// Only staff can access this page
 router.get('/:id/edit', allowRoles('staff'), (req, res, next) => {
     const patientId = req.params.id;
-    const sql = "SELECT *, printf('HN%04d', id) as clinic_number FROM patients WHERE id = ?";
+    const sql = "SELECT *, printf('CN%04d', id) as clinic_number FROM patients WHERE id = ?";
 
     db.get(sql, [patientId], (err, patient) => {
         if (err) {
@@ -80,6 +84,7 @@ router.get('/:id/edit', allowRoles('staff'), (req, res, next) => {
 });
 
 // POST /patients/:id/edit - Handle the form submission
+// Only staff can submit this form
 router.post('/:id/edit', allowRoles('staff'), (req, res, next) => {
     const patientId = req.params.id;
     const {
@@ -104,7 +109,7 @@ router.post('/:id/edit', allowRoles('staff'), (req, res, next) => {
         if (err) {
             return next(err);
         }
-        res.redirect('/patients/' + patientId + '/history');
+        res.redirect('/patients');
     });
 });
 

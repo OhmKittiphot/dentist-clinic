@@ -2,17 +2,13 @@
 <html lang="th">
   <%- include('../partials/head') %>
   <body>
-    <header class="topbar">
-      <div class="brand">Dentaist Clinic System</div>
-      <nav class="topnav">
-        <a href="/patients">เวชระเบียน</a>
-        <a href="/visits/new/1">บันทึกการรักษา (demo)</a>
-        <a href="/health">Health</a>
-      </nav>
-    </header>
+    <%- include('../partials/navbar') %>
     <main class="container">
       <%- body %>
     </main>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="/public/js/main.js"></script>
   </body>
 </html>
