@@ -11,10 +11,13 @@
     <aside class="sidebar">
       <div class="brand">DENTALCARE</div>
       <nav class="nav">
-        <a class="active" href="#"><span>เวชระเบียน</span></a>
+        <a class="active" href="/patients"><span>เวชระเบียน</span></a>
         <a href="#"><span>นัดหมาย</span></a>
         <a href="#"><span>ชำระเงิน</span></a>
       </nav>
+      <div class="nav-footer">
+        <a href="/logout"><span>ออกจากระบบ</span></a>
+      </div>
     </aside>
 
     <main class="main">
@@ -48,10 +51,10 @@
           <% } %>
           <% patients.forEach(p => { %>
             <div class="row">
-              <div><%= p.id %></div>
+              <div><%= p.clinic_number %></div>
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
-              <div><!-- Created_at column is no longer directly in patients table for new patients --></div>
+              <div><%= p.created_at %></div>
               <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
               <div>
                 <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>

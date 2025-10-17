@@ -1,0 +1,54 @@
+.procedure-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.procedure-item .proc-desc {
+    flex-grow: 1;
+}
+
+.procedure-item input {
+    margin-left: 8px;
+    width: 100px;
+}
+
+.procedure-item .tooth-no {
+    width: 80px;
+}
+
+.procedure-item .qty {
+    width: 70px;
+}
+
+.procedure-item .price {
+    width: 90px;
+}
+
+.procedure-item .remove-proc-btn {
+    margin-left: 8px;
+    padding: 5px 10px;
+}
+
+#xray-preview img {
+    margin-top: 5px;
+    margin-right: 5px;
+    border: 1px solid #ddd;
+}
+
+/* Improve select2 appearance */
+.select2-container .select2-selection--single {
+    height: 38px; /* Match bootstrap's input height */
+    border: 1px solid #ced4da;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
