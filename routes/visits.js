@@ -50,12 +50,12 @@ router.get('/new/:patient_id', allowRoles('dentist', 'staff'), (req, res, next) 
 
 router.post('/', allowRoles('dentist', 'staff'), upload.array('xrays'), (req, res, next) => {
     const { 
-        patient_id, visit_date, doctor_name, bp_sys, bp_dia,
+        patient_id, visit_date, doctor_name, bp_sys, bp_dia, pulse_rate,
         clinical_notes, procedures
     } = req.body;
 
     const xray_images = req.files ? req.files.map(file => path.join('/uploads', 'xrays', file.filename).replace(/\\/g, '/')) : [];
-    const vital_signs = { bp_sys, bp_dia };
+    const vital_signs = { bp_sys, bp_dia, pulse_rate };
 
     const visitSql = `
         INSERT INTO visits (patient_id, visit_date, doctor_name, vital_signs, clinical_notes, xray_images_list, procedures_list) 

@@ -63,6 +63,11 @@ router.post('/register', async (req, res) => {
         if (err) {
           return renderError('เกิดข้อผิดพลาดในการสร้างข้อมูลผู้ป่วย');
         }
+        
+        // Check where to redirect
+        if (from === 'patients') {
+          return res.redirect('/patients?success=true');
+        } 
         res.redirect('/login?success=registration_successful');
       });
     });

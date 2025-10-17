@@ -14,7 +14,7 @@ router.get('/', (req, res, next) => {
     // Base queries
     let countSql = `SELECT COUNT(id) AS count FROM patients`;
     let sql = `
-        SELECT id, pre_name, first_name, last_name, 
+        SELECT id, pre_name, first_name, last_name, phone, 
                printf('CN%04d', id) as clinic_number, 
                strftime('%d/%m/%Y', created_at) as created_at,
                (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age

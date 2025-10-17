@@ -52,11 +52,13 @@
           <div>ชื่อ</div>
           <div>นามสกุล</div>
           <div>อายุ</div>
+          <div>เบอร์โทร</div>
           <div>วันที่เพิ่มข้อมูล</div>
           <% if (userRole === 'staff') { %>
             <div>แก้ไข</div>
+          <% } else { %>
+            <div>ประวัติการรักษา</div>
           <% } %>
-          <div>ประวัติการรักษา</div>
         </header>
         <div class="table-body">
           <% if (!patients.length) { %>
@@ -68,15 +70,17 @@
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
               <div><%= p.age %></div>
+              <div><%= p.phone %></div>
               <div><%= p.created_at %></div>
               <% if (userRole === 'staff') { %>
                 <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
+              <% } else { %>
+                <div>
+                  <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>
+                  &nbsp;|&nbsp;
+                  <a class="chip chip-edit" href="/visits/new/<%= p.id %>">บันทึกครั้งใหม่</a>
+                </div>
               <% } %>
-              <div>
-                <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>
-                &nbsp;|&nbsp;
-                <a class="chip chip-edit" href="/visits/new/<%= p.id %>">บันทึกครั้งใหม่</a>
-              </div>
             </div>
           <% }) %>
         </div>

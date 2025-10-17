@@ -6,8 +6,8 @@
     <title>บันทึกการรักษา - <%= patient.first_name %></title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/public/css/main.css"> <!-- Main theme stylesheet -->
-    <link rel="stylesheet" href="/public/css/visit-form.css"> <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="/public/css/main.css"> 
+    <link rel="stylesheet" href="/public/css/visit-form.css"> 
 </head>
 <body>
     <div class="container my-4">
@@ -48,6 +48,10 @@
                                         <input type="number" class="form-control" name="bp_dia" placeholder="Diastolic">
                                     </div>
                                 </div>
+                                <div class="form-group col-md-6">
+                                    <label for="pulse_rate">Pulse Rate</label>
+                                    <input type="number" class="form-control" id="pulse_rate" name="pulse_rate" placeholder="bpm">
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="clinical_notes">Clinical Notes</label>
@@ -66,6 +70,11 @@
                                         <%= code.description %>
                                     </button>
                                 <% }); %>
+                                <button type="button" class="quick-add-proc" data-code="EXT" data-desc="ถอนฟัน" data-price="900">ถอนฟัน</button>
+                                <button type="button" class="quick-add-proc" data-code="SURG-EXT" data-desc="ผ่าฟันคุด" data-price="2500">ผ่าฟันคุด</button>
+                                <button type="button" class="quick-add-proc" data-code="CROWN" data-desc="ครอบฟัน" data-price="8000">ครอบฟัน</button>
+                                <button type="button" class="quick-add-proc" data-code="BLEACH" data-desc="ฟอกสีฟัน" data-price="3500">ฟอกสีฟัน</button>
+                                <button type="button" class="quick-add-proc" data-code="XRAY-SM" data-desc="เอ็กซเรย์ฟิล์มเล็ก" data-price="300">เอ็กซเรย์</button>
                             </div>
                             <div class="custom-procedure-adder">
                                 <input type="text" id="custom-proc-desc" class="form-control" placeholder="เพิ่มรายการอื่น ๆ">
@@ -80,7 +89,7 @@
                                 <div class="tooth-type-toggle">
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="tooth-type" id="adult-teeth-radio" value="adult" checked>
-                                        <label class="form-check-label" for="adult-teeth-radio">ฟันผู้ใหญ่ (11-48)</label>
+                                        <label class="form-check-label" for="adult-teeth-radio">ฟันแท้ (11-48)</label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="tooth-type" id="child-teeth-radio" value="child">
@@ -268,7 +277,9 @@
         });
 
         function addProcedure(procData) {
-            const isPerTooth = procData.description.includes('อุดฟัน') || procData.description.includes('รักษารากฟัน');
+            const perToothKeywords = ['อุดฟัน', 'รักษารากฟัน', 'ถอนฟัน', 'ครอบฟัน', 'วีเนียร์', 'เกลารากฟัน', 'ผ่าฟันคุด', 'เอ็กซเรย์'];
+            const isPerTooth = perToothKeywords.some(keyword => procData.description.includes(keyword));
+            
             if (procData.code && !procData.code.startsWith('CUSTOM_') && !isPerTooth && treatmentItems.some(item => item.code === procData.code)) {
                 return alert(`${procData.description} มีอยู่ในรายการแล้ว`);
             }
@@ -324,7 +335,7 @@
             if (item && item.isPerTooth) {
                 syncToothSelection(item.tooth_no);
                 const selectedToothIds = item.tooth_no.split(',').map(s => s.trim()).filter(Boolean).map(Number);
-                let isChildToothPresent = selectedToothIds.some(toothNum => toothNum >= 51 && toothNum <= 85);
+                let isChild = selectedToothIds.some(toothNum => toothNum >= 51 && toothNum <= 85);
 
                 document.getElementById(isChild ? 'child-teeth-radio' : 'adult-teeth-radio').checked = true;
                 adultTeethDiv.style.display = isChild ? 'none' : 'block';

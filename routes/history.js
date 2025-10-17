@@ -31,7 +31,7 @@ router.get('/patients/:id/history', allowRoles('dentist'), async (req, res, next
         id,
         visit_date,
         doctor_name,
-        vital_signs,       -- JSON string '{"bp_sys":"120", "bp_dia":"80"}'
+        vital_signs,       -- JSON string '{"bp_sys":"120", "bp_dia":"80", "pulse_rate":"75"}'
         clinical_notes,
         procedures_list,   -- JSON string of array of objects
         xray_images_list   -- JSON string of array of image paths
@@ -54,7 +54,10 @@ router.get('/patients/:id/history', allowRoles('dentist'), async (req, res, next
                     const bp = vitalSigns.bp_sys && vitalSigns.bp_dia 
                              ? `BP: ${vitalSigns.bp_sys}/${vitalSigns.bp_dia} mmHg` 
                              : null;
-                    vitalSignsText = [bp].filter(Boolean).join(' | ') || 'ไม่มีการบันทึก';
+                    const pulse = vitalSigns.pulse_rate
+                                ? `Pulse: ${vitalSigns.pulse_rate} bpm`
+                                : null;
+                    vitalSignsText = [bp, pulse].filter(Boolean).join(' | ') || 'ไม่มีการบันทึก';
                 } catch(e) {
                     console.error("Error parsing vital_signs JSON for visit ID:", v.id, e);
                 }
