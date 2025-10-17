@@ -88,6 +88,13 @@
              font-weight: 600;
              border-radius: 10px;
         }
+         .form-check-label a {
+            color: var(--brand, #2f6fb7);
+            text-decoration: none;
+        }
+        .form-check-label a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -151,15 +158,32 @@
                     </div>
                 </div>
 
+                <div class="mt-4 mb-3">
+                     <label for="terms" style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                        <input type="checkbox" id="terms" name="terms" required style="width: auto; height: auto; margin: 0;">
+                        <span>ข้าพเจ้ายอมรับ <a href="/terms" target="_blank">เงื่อนไขการให้บริการ</a></span>
+                    </label>
+                </div>
+
                 <div class="actions">
                     <div class="login-link">
                         <span>มีบัญชีอยู่แล้ว? </span><a href="/login">เข้าสู่ระบบ</a>
                     </div>
-                    <button type="submit" class="btn btn-primary">สร้างบัญชี</button>
+                    <button type="submit" class="btn btn-primary" id="submit-btn" disabled>สร้างบัญชี</button>
                 </div>
             </form>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= locals.nonce %>">
+        document.addEventListener('DOMContentLoaded', function() {
+            const termsCheckbox = document.getElementById('terms');
+            const submitButton = document.getElementById('submit-btn');
+
+            termsCheckbox.addEventListener('change', function() {
+                submitButton.disabled = !this.checked;
+            });
+        });
+    </script>
 </body>
 </html>

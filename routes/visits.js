@@ -69,7 +69,7 @@ router.post('/', allowRoles('dentist', 'staff'), upload.array('xrays'), (req, re
 
     db.run(visitSql, visitParams, function(err) {
         if (err) return next(err);
-        res.redirect(`/patients/${patient_id}/history`);
+        res.redirect(`/patients/${patient_id}/history?success=true`);
     });
 });
 

@@ -67,6 +67,11 @@ app.get('/', (req, res) => {
   res.redirect('/login');
 });
 
+// Terms of Service Page
+app.get('/terms', (req, res) => {
+    res.render('terms');
+});
+
 // DEBUG ROUTE to view all users
 app.get('/debug-users', (req, res) => {
   db.all("SELECT id, citizen_id, role, password FROM users", [], (err, rows) => {

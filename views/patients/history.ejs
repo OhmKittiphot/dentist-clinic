@@ -11,6 +11,13 @@
   <link rel="stylesheet" href="/public/css/history-custom.css"/> 
 </head>
 <body>
+  <div id="success-alert" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 1050;">
+    <strong>บันทึกการรักษาสำเร็จ!</strong>
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+
   <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -90,12 +97,24 @@
     </div>
   </div>
 
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
   <script type="application/json" id="visits-data">
     <%= JSON.stringify(visits) %>
   </script>
 
 <script nonce="<%= locals.nonce %>">
 document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('success') && urlParams.get('success') === 'true') {
+        const successAlert = document.getElementById('success-alert');
+        $(successAlert).show();
+        setTimeout(() => {
+            $(successAlert).fadeOut('slow');
+        }, 3000); 
+    }
+
     const visitsDataElement = document.getElementById('visits-data');
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = visitsDataElement.textContent;

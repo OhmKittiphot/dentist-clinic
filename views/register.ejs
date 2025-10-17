@@ -124,18 +124,37 @@
                         </div>
                     </div>
 
+                    <div style="margin-top: 16px; margin-bottom: 16px;">
+                         <label for="terms" style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+                            <input type="checkbox" id="terms" name="terms" required style="width: auto; height: auto; margin: 0;">
+                            ข้าพเจ้ายอมรับ <a href="/terms" target="_blank">เงื่อนไขการให้บริการ</a>
+                        </label>
+                    </div>
+
                     <div class="actions">
                         <% if (from === 'patients') { %>
                             <a class="link" href="/patients">← กลับหน้าเวชระเบียน</a>
                         <% } else { %>
                             <a class="link" href="/login">กลับไปหน้าล็อกอิน</a>
                         <% } %>
-                        <button class="primary" type="submit">สร้างบัญชี</button>
+                        <button class="primary" type="submit" id="submit-btn" disabled>สร้างบัญชี</button>
                     </div>
                 </form>
             </div>
         </section>
     </main>
+
+    <script nonce="<%= locals.nonce %>">
+        document.addEventListener('DOMContentLoaded', function() {
+            const termsCheckbox = document.getElementById('terms');
+            const submitButton = document.getElementById('submit-btn');
+
+            termsCheckbox.addEventListener('change', function() {
+                submitButton.disabled = !this.checked;
+            });
+        });
+    </script>
+
 </body>
 
 </html>
