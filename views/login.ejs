@@ -1,41 +1,132 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title><%= title %></title>
   <link rel="stylesheet" href="/public/css/styles.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    .login-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: var(--bg, #f8f9fa);
+    }
+    .login-container {
+      display: flex;
+      width: 100%;
+      max-width: 900px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      background: white;
+    }
+    .login-left, .login-right {
+      padding: 3rem;
+      width: 50%;
+    }
+    .login-left {
+      background: var(--brand, #007bff);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .login-left h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    .login-left p {
+        margin-bottom: 2rem;
+    }
+    .btn-register {
+        display: inline-block;
+        padding: 10px 20px;
+        background: white;
+        color: var(--brand, #007bff);
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .login-right h2 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    .dentist-reg-link {
+        text-align: center;
+        margin-top: 1.5rem; /* Reduced margin */
+    }
+    .dentist-reg-link a {
+        font-size: 0.9rem; /* Smaller font */
+        color: #6c757d;
+        text-decoration: none;
+    }
+    /* Custom Alert Styles */
+    .custom-alert {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: .5rem;
+        border: 1px solid transparent;
+        font-size: 1rem;
+    }
+    .custom-alert .icon {
+        margin-right: 10px;
+        font-size: 1.25rem;
+    }
+    .alert-success {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+    .alert-danger {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
+  </style>
 </head>
 <body>
-<main>
-  <section class="wrap">
-    <div class="brand">
-      <div class="logo"><img src="/public/css/logo.png" alt="Dentalcare Logo"></div>
-      <div>
-        <h1>เข้าสู่ระบบ</h1>
-        <p class="sub">ระบบจัดการคลินิกทันตกรรม</p>
+  <main class="login-section">
+    <div class="login-container">
+      <!-- Left Side: Patient Registration -->
+      <div class="login-left">
+        <h1>สมาชิกใหม่?</h1>
+        <p>สำหรับผู้ป่วยที่ยังไม่มีบัญชี <br/>กรุณาสมัครสมาชิกเพื่อใช้งานระบบ</p>
+        <a href="/register?from=login" class="btn-register">สมัครสมาชิก (ผู้ป่วย)</a>
+      </div>
+
+      <!-- Right Side: Login Form -->
+      <div class="login-right">
+        <h2>เข้าสู่ระบบ</h2>
+        <% if (message) { %>
+          <div class="custom-alert <%= message.includes('สำเร็จ') ? 'alert-success' : 'alert-danger' %>">
+            <i class="icon <%= message.includes('สำเร็จ') ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle' %>"></i>
+            <span><%= message %></span>
+          </div>
+        <% } %>
+        <form method="post" action="/login">
+          <label>รหัสบัตรประชาชน
+            <input name="citizen_id" required maxlength="13">
+          </label>
+          <label>รหัสผ่าน
+            <input type="password" name="password" required>
+          </label>
+          <div class="actions" style="margin-top: 1rem;">
+            <button class="primary" type="submit" style="width: 100%;">เข้าสู่ระบบ</button>
+          </div>
+        </form>
+        <div class="dentist-reg-link">
+            <a href="/dentist/register">ลงทะเบียนสำหรับทันตแพทย์</a>
+        </div>
       </div>
     </div>
-
-    <div class="card">
-      <% if (message) { %>
-        <div class="alert <%= message.includes('สำเร็จ') ? 'alert-success' : 'alert-danger' %>">
-          <%= message %>
-        </div>
-      <% } %>
-      <form method="post" action="/login">
-        <label>รหัสบัตรประชาชน
-          <input name="citizen_id" required maxlength="13">
-        </label>
-        <label>รหัสผ่าน
-          <input type="password" name="password" required>
-        </label>
-        <div class="actions">
-          <button class="primary" type="submit">เข้าสู่ระบบ</button>
-          <a class="link" href="/register?from=login">สมัครสมาชิก</a>
-        </div>
-      </form>
-    </div>
-  </section>
-</main>
+  </main>
 </body>
 </html>

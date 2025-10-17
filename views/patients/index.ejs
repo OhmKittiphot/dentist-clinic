@@ -51,6 +51,7 @@
           <div>Clinic Number</div>
           <div>ชื่อ</div>
           <div>นามสกุล</div>
+          <div>อายุ</div>
           <div>วันที่เพิ่มข้อมูล</div>
           <% if (userRole === 'staff') { %>
             <div>แก้ไข</div>
@@ -66,6 +67,7 @@
               <div><%= p.clinic_number %></div>
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
+              <div><%= p.age %></div>
               <div><%= p.created_at %></div>
               <% if (userRole === 'staff') { %>
                 <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
