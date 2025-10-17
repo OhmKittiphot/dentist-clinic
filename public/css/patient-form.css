@@ -1,0 +1,151 @@
+/* === Patient Edit Form: /patients/:id/edit === */
+
+:root {
+    --form-bg: #ffffff;
+    --form-border: #dee6f0;
+    --label-color: #3b4d66;
+    --input-bg: #ffffff;
+    --input-border: #d1d9e4;
+    --input-focus-border: #2f6fb7;
+    --input-focus-shadow: rgba(47, 111, 183, 0.2);
+    --btn-primary-bg: #2f6fb7;
+    --btn-primary-hover: #255891;
+    --btn-secondary-bg: #f0f4f9;
+    --btn-secondary-hover: #e6eef6;
+    --btn-secondary-text: #3b4d66;
+}
+
+.form-container {
+    max-width: 900px; /* Increased width for better spacing */
+    margin: 24px auto;
+    padding: 0 24px; /* Added horizontal padding */
+}
+
+.form-card {
+    background-color: var(--form-bg);
+    border-radius: 12px;
+    border: 1px solid var(--form-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.form-header {
+    padding: 20px 24px;
+    background-color: #f6f9fc;
+    border-bottom: 1px solid var(--form-border);
+}
+
+.form-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.form-header .clinic-number {
+    margin-top: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.form-body {
+    padding: 32px 24px; /* Increased vertical padding */
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr); /* Switched to a 12-column grid */
+    gap: 28px 24px; /* Increased gap */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Span utility classes for grid */
+.g-col-12 { grid-column: span 12; }
+.g-col-6 { grid-column: span 6; }
+.g-col-5 { grid-column: span 5; } /* <<< ADDED THIS MISSING CLASS */
+.g-col-4 { grid-column: span 4; }
+.g-col-3 { grid-column: span 3; }
+.g-col-2 { grid-column: span 2; }
+
+.form-group label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--label-color);
+    margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid var(--form-border);
+    margin-top: 32px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+    background-color: var(--btn-primary-bg);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: var(--btn-primary-hover);
+    color: #fff;
+}
+
+.btn-secondary {
+    background-color: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+    border-color: var(--btn-secondary-bg);
+}
+
+.btn-secondary:hover {
+    background-color: var(--btn-secondary-hover);
+    border-color: var(--btn-secondary-hover);
+    color: #2b3a4f;
+}

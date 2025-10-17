@@ -17,12 +17,17 @@
             <h3 class="patient-name-header"><%= patient.first_name %> <%= patient.last_name %></h3>
             <div class="patient-info-chips">
                 <span class="chip">CN: <%= patient.clinic_number %></span>
-                <span class="chip">อายุ: <%= patient.age %></span>
+                <span class="chip">อายุ: <%= patient.age %> ปี</span>
                 <span class="chip">เพศ: <%= patient.gender %></span>
             </div>
         </div>
         <div>
-          <a href="/visits/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+          <% if (userRole === 'dentist') { %>
+            <a href="/visits/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+          <% } %>
+          <% if (userRole === 'staff') { %>
+            <a href="/patients/<%= patient.id %>/edit" class="btn btn-warning">แก้ไขข้อมูลคนไข้</a>
+          <% } %>
           <a href="/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
         </div>
     </div>
@@ -95,10 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = visitsDataElement.textContent;
     const allVisitsData = JSON.parse(tempDiv.textContent);
-    console.log('All Visits Data (parsed):', allVisitsData); // Debugging log
     
     const visitsMap = new Map(allVisitsData.map(v => [v.id.toString(), v]));
-    console.log('Visits Map:', visitsMap); // Debugging log
 
     const visitListBody = document.getElementById('visit-list-body');
     const visitItems = Array.from(visitListBody.querySelectorAll('.visit-item'));
@@ -109,9 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const endDateInput = document.getElementById('end-date-input');
 
     function updateDetails(visitId) {
-        console.log('updateDetails called with visitId:', visitId); // Debugging log
         const visit = visitsMap.get(visitId);
-        console.log('Retrieved visit:', visit); // Debugging log
 
         if (!visit) {
             detailHeader.textContent = 'รายละเอียดการรักษา';
@@ -127,33 +128,14 @@ document.addEventListener('DOMContentLoaded', function() {
         let procedures = [];
         try {
             procedures = JSON.parse(visit.procedures_list_json || '[]');
-            // Filter out procedures that are effectively empty
-            procedures = procedures.filter(p => 
-                (p.description && p.description.trim() !== '') || 
-                (p.tooth_no && p.tooth_no.trim() !== '')
-            );
-            // Sort procedures by tooth_no numerically, handling non-numeric values gracefully
+            procedures = procedures.filter(p => (p.description && p.description.trim() !== '') || (p.tooth_no && p.tooth_no.trim() !== ''));
             procedures.sort((a, b) => {
-                const toothA = parseInt(a.tooth_no);
-                const toothB = parseInt(b.tooth_no);
-
-                const isANumber = !isNaN(toothA) && a.tooth_no !== '';
-                const isBNumber = !isNaN(toothB) && b.tooth_no !== '';
-
-                if (isANumber && isBNumber) {
-                    return toothA - toothB;
-                } else if (isANumber) {
-                    return -1; // A is a number, B is not, so A comes first
-                } else if (isBNumber) {
-                    return 1; // B is a number, A is not, so B comes first
-                } else {
-                    // For non-numeric or empty tooth_no, sort by description as a fallback
-                    const descA = (a.description || '').toLowerCase();
-                    const descB = (b.description || '').toLowerCase();
-                    if (descA < descB) return -1;
-                    if (descA > descB) return 1;
-                    return 0;
-                }
+                const toothA = parseInt(a.tooth_no, 10);
+                const toothB = parseInt(b.tooth_no, 10);
+                if (!isNaN(toothA) && !isNaN(toothB)) return toothA - toothB;
+                if (!isNaN(toothA)) return -1;
+                if (!isNaN(toothB)) return 1;
+                return (a.description || '').localeCompare(b.description || '');
             });
         } catch(e) { console.error("Error parsing procedures JSON for visit ID:", visit.id, e); procedures = []; }
 
@@ -162,37 +144,16 @@ document.addEventListener('DOMContentLoaded', function() {
             xrays = JSON.parse(visit.xray_images_list_json || '[]');
         } catch(e) { console.error("Error parsing xrays JSON for visit ID:", visit.id, e); xrays = []; }
 
-        // Refined HTML structure for better UI
         let contentHtml = `
-            <div class="detail-section">
-                <h5>Vital Signs</h5>
-                <p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p>
-            </div>
-            <div class="detail-section">
-                <h5>รายการหัตถการ</h5>
-                ${procedures.length > 0 ? 
-                    `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
-            </div>
-            <div class="detail-section">
-                <h5>ทันตแพทย์ผู้รักษา</h5>
-                <p>ทพ. ${visit.doctor_name || 'N/A'}</p>
-            </div>
-            <div class="detail-section">
-                <h5>บันทึก/ข้อสังเกต</h5>
-                <p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p>
-            </div>
+            <div class="detail-section"><h5>Vital Signs</h5><p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p></div>
+            <div class="detail-section"><h5>รายการหัตถการ</h5>${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}</div>
+            <div class="detail-section"><h5>ทันตแพทย์ผู้รักษา</h5><p>ทพ. ${visit.doctor_name || 'N/A'}</p></div>
+            <div class="detail-section"><h5>บันทึก/ข้อสังเกต</h5><p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p></div>
         `;
 
         if (xrays.length > 0) {
              contentHtml += `
-            <div class="detail-section">
-                <h5>X-Ray Images</h5>
-                <div class="row">${xrays.map(path => `
-                    <div class="col-md-4 mb-2">
-                        <a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a>
-                    </div>`).join('')}
-                </div>
-            </div>`;
+            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${xrays.map(path => `<div class="col-md-4 mb-2"><a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a></div>`).join('')}</div></div>`;
         }
 
         detailContent.innerHTML = contentHtml;
@@ -202,23 +163,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchTerm = searchInput.value.toLowerCase();
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
-
         let firstVisible = null;
 
         visitItems.forEach(item => {
             const searchText = item.dataset.searchText || '';
             const visitDate = item.dataset.visitDateIso || '';
-
-            const isSearchMatch = !searchTerm || searchText.includes(searchTerm);
-            const isStartDateMatch = !startDate || visitDate >= startDate;
-            const isEndDateMatch = !endDate || visitDate <= endDate;
-
-            if (isSearchMatch && isStartDateMatch && isEndDateMatch) {
-                item.style.display = 'grid';
-                if (!firstVisible) firstVisible = item;
-            } else {
-                item.style.display = 'none';
-            }
+            const isMatch = (!searchTerm || searchText.includes(searchTerm)) && 
+                              (!startDate || visitDate >= startDate) && 
+                              (!endDate || visitDate <= endDate);
+            item.style.display = isMatch ? 'grid' : 'none';
+            if (isMatch && !firstVisible) firstVisible = item;
         });
         
         let currentActive = document.querySelector('.visit-item.active');
@@ -238,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (item) {
             e.preventDefault();
             if (item.classList.contains('active')) return;
-            
             visitItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
             updateDetails(item.dataset.visitId);
@@ -247,19 +200,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     [searchInput, startDateInput, endDateInput].forEach(input => {
       input.addEventListener('input', () => requestAnimationFrame(filterItems));
-      input.addEventListener('change', () => requestAnimationFrame(filterItems));
     });
 
     function initialize() {
       const initialActive = visitItems.find(item => item.classList.contains('active'));
-      if (initialActive) {
-          updateDetails(initialActive.dataset.visitId);
-      } else if (visitItems.length > 0) {
+      if (initialActive) updateDetails(initialActive.dataset.visitId);
+      else if (visitItems.length > 0) {
           visitItems[0].classList.add('active');
           updateDetails(visitItems[0].dataset.visitId);
-      } else {
-          updateDetails(null);
-      }
+      } else updateDetails(null);
     }
 
     initialize();

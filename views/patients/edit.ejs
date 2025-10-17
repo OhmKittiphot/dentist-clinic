@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>แก้ไขข้อมูลผู้ป่วย | Dentaist Clinic System</title>
+  
+  <!-- Main Stylesheets -->
+  <link rel="stylesheet" href="/public/css/main.css"/>
+  <link rel="stylesheet" href="/public/css/patient-form.css"/>
+  
+  <!-- FontAwesome for icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials/navbar', { active: 'patients' }) %>
+
+    <main class="main-content">
+      <div class="form-container">
+        <form action="/patients/<%= patient.id %>/edit" method="POST" class="form-card">
+          
+          <header class="form-header">
+            <h1>แก้ไขข้อมูลผู้ป่วย</h1>
+            <div class="clinic-number">HN: <%= patient.clinic_number %></div>
+          </header>
+
+          <section class="form-body">
+            <div class="form-grid">
+              
+              <!-- Title -->
+              <div class="form-group g-col-2">
+                <label for="pre_name">คำนำหน้า</label>
+                <select id="pre_name" name="pre_name">
+                  <option value="นาย" <%= patient.pre_name === 'นาย' ? 'selected' : '' %>>นาย</option>
+                  <option value="นาง" <%= patient.pre_name === 'นาง' ? 'selected' : '' %>>นาง</option>
+                  <option value="นางสาว" <%= patient.pre_name === 'นางสาว' ? 'selected' : '' %>>นางสาว</option>
+                  <option value="เด็กชาย" <%= patient.pre_name === 'เด็กชาย' ? 'selected' : '' %>>เด็กชาย</option>
+                  <option value="เด็กหญิง" <%= patient.pre_name === 'เด็กหญิง' ? 'selected' : '' %>>เด็กหญิง</option>
+                </select>
+              </div>
+
+              <!-- First Name -->
+              <div class="form-group g-col-5">
+                <label for="first_name">ชื่อจริง</label>
+                <input type="text" id="first_name" name="first_name" value="<%= patient.first_name %>" required>
+              </div>
+
+              <!-- Last Name -->
+              <div class="form-group g-col-5">
+                <label for="last_name">นามสกุล</label>
+                <input type="text" id="last_name" name="last_name" value="<%= patient.last_name %>" required>
+              </div>
+
+              <!-- Gender -->
+              <div class="form-group g-col-4">
+                <label for="gender">เพศ</label>
+                <select id="gender" name="gender">
+                  <option value="ชาย" <%= patient.gender === 'ชาย' ? 'selected' : '' %>>ชาย</option>
+                  <option value="หญิง" <%= patient.gender === 'หญิง' ? 'selected' : '' %>>หญิง</option>
+                  <option value="อื่นๆ" <%= patient.gender === 'อื่นๆ' ? 'selected' : '' %>>อื่นๆ</option>
+                </select>
+              </div>
+
+              <!-- Birth Date -->
+              <div class="form-group g-col-4">
+                <label for="birth_date">วันเกิด</label>
+                <input type="date" id="birth_date" name="birth_date" value="<%= patient.birth_date %>">
+              </div>
+              
+              <!-- Phone -->
+              <div class="form-group g-col-4">
+                <label for="phone">เบอร์โทรศัพท์</label>
+                <input type="tel" id="phone" name="phone" value="<%= patient.phone %>">
+              </div>
+
+              <!-- Email -->
+              <div class="form-group g-col-6">
+                <label for="email">อีเมล</label>
+                <input type="email" id="email" name="email" value="<%= patient.email %>">
+              </div>
+
+              <!-- Address -->
+              <div class="form-group g-col-12">
+                <label for="address">ที่อยู่</label>
+                <textarea id="address" name="address" rows="3"><%= patient.address %></textarea>
+              </div>
+
+              <!-- Race -->
+              <div class="form-group g-col-4">
+                <label for="race">เชื้อชาติ</label>
+                <input type="text" id="race" name="race" value="<%= patient.race %>">
+              </div>
+
+              <!-- Nationality -->
+              <div class="form-group g-col-4">
+                <label for="nationality">สัญชาติ</label>
+                <input type="text" id="nationality" name="nationality" value="<%= patient.nationality %>">
+              </div>
+
+              <!-- Religion -->
+              <div class="form-group g-col-4">
+                <label for="religion">ศาสนา</label>
+                <input type="text" id="religion" name="religion" value="<%= patient.religion %>">
+              </div>
+
+              <!-- Drug Allergy -->
+              <div class="form-group g-col-12">
+                <label for="drug_allergy">ประวัติการแพ้ยา</label>
+                <textarea id="drug_allergy" name="drug_allergy" rows="2"><%= patient.drug_allergy %></textarea>
+              </div>
+
+            </div>
+          </section>
+
+          <footer class="form-actions">
+            <a href="/patients/<%= patient.id %>/history" class="btn btn-secondary">ยกเลิก</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fa-solid fa-save"></i>
+              <span>บันทึกข้อมูล</span>
+            </button>
+          </footer>
+
+        </form>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
