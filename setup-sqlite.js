@@ -1,23 +1,36 @@
 const sqlite3 = require('sqlite3').verbose();
 
 // open the database
-let db = new sqlite3.Database('./clinic.db', (err) => {
+let db = new sqlite3.Database('./Dentalcare.db', (err) => {
   if (err) {
     console.error(err.message);
   }
-  console.log('Connected to the clinic database.');
+  console.log('Connected to the Dentalcare database.');
 });
 
 const createTables = () => {
   const sql = `
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      citizen_id TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'patient'
+    );
     CREATE TABLE IF NOT EXISTS patients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER UNIQUE,
+      pre_name TEXT,
       first_name TEXT NOT NULL,
       last_name TEXT,
       gender TEXT,
       birth_date TEXT,
-      phone_number TEXT,
-      clinic_number TEXT UNIQUE
+      phone TEXT,
+      email TEXT,
+      race TEXT,
+      nationality TEXT,
+      religion TEXT,
+      drug_allergy TEXT,
+      FOREIGN KEY(user_id) REFERENCES users(id)
     );
     CREATE TABLE IF NOT EXISTS visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,13 +77,19 @@ const insertSampleData = () => {
         { code: 'P301', description: 'ฟอกสีฟัน', price: 3500 }
     ];
 
-    const sql = `INSERT OR IGNORE INTO procedure_codes (code, description, price) VALUES (?, ?, ?)`;
+    const sqlProcedureCodes = `INSERT OR IGNORE INTO procedure_codes (code, description, price) VALUES (?, ?, ?)`;
+    const sqlUsers = `INSERT OR IGNORE INTO users (citizen_id, password, role) VALUES (?, ?, ?)`;
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION;');
         sampleProcedures.forEach(proc => {
-            db.run(sql, [proc.code, proc.description, proc.price]);
+            db.run(sqlProcedureCodes, [proc.code, proc.description, proc.price]);
         });
+        
+        // Insert sample users for Dentist and Staff roles
+        db.run(sqlUsers, ['1111111111111', 'password', 'dentist']);
+        db.run(sqlUsers, ['2222222222222', 'password', 'staff']);
+
         db.run('COMMIT;');
     });
     console.log("Sample data inserted.");

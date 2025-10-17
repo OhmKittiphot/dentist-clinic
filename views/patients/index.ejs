@@ -28,8 +28,8 @@
           </button>
         </form>
         <div class="spacer"></div>
-        <a class="btn btn-success" href="/patients/new">
-          <span class="plus">+</span> ลงทะเบียนผู้ป่วยใหม่
+        <a class="btn btn-success" href="/register">
+          <span class="plus">+</span> สมัครสมาชิกผู้ป่วยใหม่
         </a>
       </div>
 
@@ -48,10 +48,10 @@
           <% } %>
           <% patients.forEach(p => { %>
             <div class="row">
-              <div><%= p.clinic_number %></div>
+              <div><%= p.id %></div>
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
-              <div><%= p.created_at %></div>
+              <div><!-- Created_at column is no longer directly in patients table for new patients --></div>
               <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
               <div>
                 <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>

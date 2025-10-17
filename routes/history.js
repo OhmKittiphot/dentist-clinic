@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { allowRoles } = require('../utils/auth');
 
-router.get('/patients/:id/history', async (req, res, next) => {
+router.get('/patients/:id/history', allowRoles('dentist'), async (req, res, next) => {
   const patientId = req.params.id;
 
   try {
@@ -67,7 +68,8 @@ router.get('/patients/:id/history', async (req, res, next) => {
     res.render('patients/history', { 
         patient, 
         visits, 
-        layout: 'layouts/main'
+        layout: 'layouts/main',
+        userRole: req.user.role // Pass user role to the template
     });
 
   } catch (err) {

@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 
@@ -15,25 +16,13 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Static assets
-app.use('/public', express.static(path.join(__dirname, 'public')));
-
-// Layout helper
-const layoutSupport = require('./layout-support');
-
-// Nonce middleware
+// Nonce middleware (should be before helmet for CSP)
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString('base64');
   next();
 });
 
-// Middlewares
-app.use(layoutSupport);
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(morgan('dev'));
-
-// Configure Helmet with CSP
+// Configure Helmet with CSP (should be early)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -50,17 +39,50 @@ app.use(helmet({
 
 app.use(compression());
 
+// Static assets - MUST be before any authentication middleware
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// Middlewares
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(morgan('dev'));
+
+
+// Layout helper
+const layoutSupport = require('./layout-support');
+app.use(layoutSupport);
+
 // Routes
+const authRouter = require('./routes/auth');
 const patientsRouter = require('./routes/patients');
 const visitsRouter = require('./routes/visits');
 const uploadRouter = require('./routes/upload');
 const historyRouter = require('./routes/history');
+const { authenticateToken, allowRoles } = require('./utils/auth');
 
-app.get('/', (req, res) => res.redirect('/patients'));
-app.use('/patients', patientsRouter);
-app.use('/visits', visitsRouter);
-app.use('/upload', uploadRouter);
-app.use('/', historyRouter);
+// Public routes (login and register)
+app.use('/', authRouter);
+
+// Redirect root to login if not authenticated
+app.get('/', (req, res) => {
+  if (!req.cookies.token) {
+    return res.redirect('/login');
+  }
+  res.redirect('/patients'); 
+});
+
+// Specific role redirects after login
+app.get('/dentist', authenticateToken, (req, res) => res.redirect('/patients'));
+app.get('/staff', authenticateToken, (req, res) => res.redirect('/patients'));
+
+// Apply authentication middleware to all routes that require it.
+// Order matters: specific routes first, then more general ones.
+app.use('/patients', authenticateToken, patientsRouter);
+app.use('/visits', authenticateToken, visitsRouter);
+app.use('/upload', authenticateToken, uploadRouter);
+app.use('/', authenticateToken, historyRouter);
+
 
 // Healthcheck
 const db = require('./db');
