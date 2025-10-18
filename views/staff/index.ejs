@@ -1,27 +1,9 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>เวชระเบียน | Dentaist Clinic System</title>
-  <link rel="stylesheet" href="/public/css/medical_record.css"/>
-</head>
+<%- include('../partials/head', { userRole: userRole }) %>
 <body>
   <div class="app">
-    <aside class="sidebar">
-      <div class="brand">DENTALCARE</div>
-      <nav class="nav">
-        <a class="active" href="/patients"><span>เวชระเบียน</span></a>
-        <a href="#"><span>นัดหมาย</span></a>
-        <a href="#"><span>ชำระเงิน</span></a>
-      </nav>
-      <div class="nav-footer">
-        <a href="/logout"><span>ออกจากระบบ</span></a>
-      </div>
-    </aside>
+    <%- include('../partials/navbar', { userRole: userRole }) %>
 
     <main class="main">
-
       <% if (successMessage) { %>
         <div class="alert alert-success" id="success-alert">
           <%= successMessage %>
@@ -30,7 +12,7 @@
       <% } %>
 
       <div class="toolbar">
-        <form class="search" role="search" method="GET" action="/patients">
+        <form class="search" role="search" method="GET" action="/dentist/patients">
           <input type="search" name="search" placeholder="ค้นหาผู้ป่วย ชื่อ/นามสกุล/หมายเลขคลินิก" aria-label="Search" value="<%= searchQuery %>" />
           <button type="submit" style="background:none; border:none; cursor:pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -73,12 +55,12 @@
               <div><%= p.phone %></div>
               <div><%= p.created_at %></div>
               <% if (userRole === 'staff') { %>
-                <div><a class="chip chip-edit" href="/patients/<%= p.id %>/edit">แก้ไข</a></div>
+                <div><a class="chip chip-edit" href="/staff/patients/<%= p.id %>/edit">แก้ไข</a></div>
               <% } else { %>
                 <div>
-                  <a class="chip chip-history" href="/patients/<%= p.id %>/history">ดูประวัติ</a>
+                  <a class="chip chip-history" href="/staff/patients/<%= p.id %>/history">ดูประวัติ</a>
                   &nbsp;|&nbsp;
-                  <a class="chip chip-edit" href="/visits/new/<%= p.id %>">บันทึกครั้งใหม่</a>
+                  <a class="chip chip-edit" href="/staff/new/<%= p.id %>">บันทึกครั้งใหม่</a>
                 </div>
               <% } %>
             </div>
@@ -90,17 +72,17 @@
         <div class="pagination-wrap" aria-label="เปลี่ยนหน้า">
           <div class="pagination">
             <% if (currentPage > 1) { %>
-              <a href="/patients?page=<%= currentPage - 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ก่อนหน้า</a>
+              <a href="/dentist/patients?page=<%= currentPage - 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ก่อนหน้า</a>
             <% } else { %>
               <button class="page-btn page-ghost" type="button" disabled>ก่อนหน้า</button>
             <% } %>
 
             <% for (let i = 1; i <= totalPages; i++) { %>
-              <a href="/patients?page=<%= i %>&search=<%= searchQuery %>" class="page-btn <%= i === currentPage ? 'active' : '' %>" <%= i === currentPage ? 'aria-current="page"' : '' %>><%= i %></a>
+              <a href="/dentist/patients?page=<%= i %>&search=<%= searchQuery %>" class="page-btn <%= i === currentPage ? 'active' : '' %>" <%= i === currentPage ? 'aria-current="page"' : '' %>><%= i %></a>
             <% } %>
 
             <% if (currentPage < totalPages) { %>
-              <a href="/patients?page=<%= currentPage + 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ถัดไป</a>
+              <a href="/dentist/patients?page=<%= currentPage + 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ถัดไป</a>
             <% } else { %>
               <button class="page-btn page-ghost" type="button" disabled>ถัดไป</button>
             <% } %>

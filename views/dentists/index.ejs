@@ -1,0 +1,95 @@
+<%- include('../partials/head', { userRole: userRole }) %>
+<body>
+  <div class="app">
+    <%- include('../partials/navbar', { userRole: userRole }) %>
+
+    <main class="main">
+      <% if (successMessage) { %>
+        <div class="alert alert-success" id="success-alert">
+          <%= successMessage %>
+          <button type="button" class="close" onclick="document.getElementById('success-alert').style.display='none'">&times;</button>
+        </div>
+      <% } %>
+
+      <div class="toolbar">
+        <form class="search" role="search" method="GET" action="/dentist/patients">
+          <input type="search" name="search" placeholder="ค้นหาผู้ป่วย ชื่อ/นามสกุล/หมายเลขคลินิก" aria-label="Search" value="<%= searchQuery %>" />
+          <button type="submit" style="background:none; border:none; cursor:pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M21 21l-4.3-4.3M3 11a8 8 0 1016 0 8 8 0 10-16 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+        <div class="spacer"></div>
+        <% if (userRole === 'staff') { %>
+          <a class="btn btn-success" href="/register?from=patients">
+            <span class="plus">+</span> สมัครสมาชิกผู้ป่วยใหม่
+          </a>
+        <% } %>
+      </div>
+
+      <section class="card" aria-label="ตารางเวชระเบียน">
+        <header class="table-head">
+          <div>Clinic Number</div>
+          <div>ชื่อ</div>
+          <div>นามสกุล</div>
+          <div>อายุ</div>
+          <div>เบอร์โทร</div>
+          <div>วันที่เพิ่มข้อมูล</div>
+          <% if (userRole === 'staff') { %>
+            <div>แก้ไข</div>
+          <% } else { %>
+            <div>ประวัติการรักษา</div>
+          <% } %>
+        </header>
+        <div class="table-body">
+          <% if (!patients.length) { %>
+            <div class="empty">ยังไม่มีข้อมูล</div>
+          <% } %>
+          <% patients.forEach(p => { %>
+            <div class="row">
+              <div><%= p.clinic_number %></div>
+              <div><%= p.first_name %></div>
+              <div><%= p.last_name %></div>
+              <div><%= p.age %></div>
+              <div><%= p.phone %></div>
+              <div><%= p.created_at %></div>
+              <% if (userRole === 'staff') { %>
+                <div><a class="chip chip-edit" href="/dentist/patients/<%= p.id %>/edit">แก้ไข</a></div>
+              <% } else { %>
+                <div>
+                  <a class="chip chip-history" href="/dentist/patients/<%= p.id %>/history">ดูประวัติ</a>
+                  &nbsp;|&nbsp;
+                  <a class="chip chip-edit" href="/dentist/new/<%= p.id %>">บันทึกครั้งใหม่</a>
+                </div>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      </section>
+
+      <% if (totalPages > 1) { %>
+        <div class="pagination-wrap" aria-label="เปลี่ยนหน้า">
+          <div class="pagination">
+            <% if (currentPage > 1) { %>
+              <a href="/dentist/patients?page=<%= currentPage - 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ก่อนหน้า</a>
+            <% } else { %>
+              <button class="page-btn page-ghost" type="button" disabled>ก่อนหน้า</button>
+            <% } %>
+
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <a href="/dentist/patients?page=<%= i %>&search=<%= searchQuery %>" class="page-btn <%= i === currentPage ? 'active' : '' %>" <%= i === currentPage ? 'aria-current="page"' : '' %>><%= i %></a>
+            <% } %>
+
+            <% if (currentPage < totalPages) { %>
+              <a href="/dentist/patients?page=<%= currentPage + 1 %>&search=<%= searchQuery %>" class="page-btn page-ghost">ถัดไป</a>
+            <% } else { %>
+              <button class="page-btn page-ghost" type="button" disabled>ถัดไป</button>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </main>
+  </div>
+</body>
+</html>

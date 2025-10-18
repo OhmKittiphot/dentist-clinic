@@ -1,28 +1,39 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" href="/">Dentaist Clinic</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse" id="navbarNav">
-    <ul class="navbar-nav mr-auto">
-      <% if (userRole === 'dentist' || userRole === 'staff') { %>
-        <li class="nav-item">
-          <a class="nav-link" href="/patients">เวชระเบียนผู้ป่วย</a>
-        </li>
-      <% } %>
-      <% if (userRole === 'staff') { %>
-        <li class="nav-item">
-          <a class="nav-link" href="/patients/new">เพิ่มผู้ป่วยใหม่</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/payments">ชำระเงิน</a>
-        </li>
-      <% } %>
-    </ul>
-    <ul class="navbar-nav">
-        <li class="nav-item">
-            <a class="nav-link" href="/logout">ออกจากระบบ</a>
-        </li>
-    </ul>
+<aside class="sidebar">
+  <div class="brand">DENTALCARE</div>
+
+ 
+
+  <!-- 🔹 Navigation Menu -->
+  <nav class="nav">
+    <% if (userRole === 'dentist') { %>
+      <h4 class="nav-group-title">Dentist Menu</h4>
+      <ul class="nav-group">
+        <li class="nav-item"><a class="nav-link" href="/dentist/patients">เวชระเบียนผู้ป่วย</a></li>
+        <li class="nav-item"><a class="nav-link" href="/dentist/schedule">นัดหมาย [ยังไม่เสร็จ]</a></li>
+      </ul>
+    <% } %>
+
+    <% if (userRole === 'staff') { %>
+      <h4 class="nav-group-title">Staff Menu</h4>
+      <ul class="nav-group">
+        <li class="nav-item"><a class="nav-link" href="/staff/patients">เวชระเบียนผู้ป่วย</a></li>
+        <li class="nav-item"><a class="nav-link" href="/staff/schedule">จัดการตารางนัด [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link" href="/staff/payments">ชำระเงิน [ยังไม่เสร็จ]</a></li>
+      </ul>
+    <% } %>
+
+    <% if (userRole === 'patient') { %>
+      <h4 class="nav-group-title">Patient Menu</h4>
+      <ul class="nav-group">
+        <li class="nav-item"><a class="nav-link" href="/patient/records">เวชระเบียนของฉัน</a></li>
+        <li class="nav-item"><a class="nav-link" href="/patient/appointments">นัดหมายของฉัน [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link" href="/patient/payments">การชำระเงิน [ยังไม่เสร็จ]</a></li>
+      </ul>
+    <% } %>
+  </nav>
+
+  <!-- 🔹 Footer -->
+  <div class="nav-footer">
+    <a href="/logout"><span>ออกจากระบบ</span></a>
   </div>
-</nav>
+</aside>

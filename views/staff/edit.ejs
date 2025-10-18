@@ -17,7 +17,7 @@
 
     <main class="main-content">
       <div class="form-container">
-        <form action="/patients/<%= patient.id %>/edit" method="POST" class="form-card">
+        <form action="/staff/patients/<%= patient.id %>/edit" method="POST" class="form-card">
           
           <header class="form-header">
             <h1>แก้ไขข้อมูลผู้ป่วย</h1>
@@ -113,7 +113,7 @@
           </section>
 
           <footer class="form-actions">
-            <a href="/patients" class="btn btn-secondary">ยกเลิก</a>
+            <a href="/staff/patients" class="btn btn-secondary">ยกเลิก</a>
             <button type="submit" class="btn btn-primary">
               <i class="fa-solid fa-save"></i>
               <span>บันทึกข้อมูล</span>

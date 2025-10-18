@@ -54,14 +54,9 @@ app.use(morgan('dev'));
 // --- Routes ---
 const { authenticateToken } = require('./utils/auth');
 const authRouter = require('./routes/auth');
-const patientsRouter = require('./routes/patients');
-const visitsRouter = require('./routes/visits');
-const uploadRouter = require('./routes/upload');
-const historyRouter = require('./routes/history');
-const patientRouter = require('./routes/patient'); // Added this line
-const paymentRouter = require('./routes/payment');
-
-
+const dentRouter = require('./routes/dentist');
+const staffRouter = require('./routes/staff');
+const pantRouter = require('./routes/patient');
 // --- Public & Debug Routes ---
 
 // Root route should always go to login
@@ -74,7 +69,7 @@ app.get('/terms', (req, res) => {
     res.render('terms');
 });
 
-// DEBUG ROUTE to view all users
+// Debug route to list all users (for development only)
 app.get('/debug-users', (req, res) => {
   db.all("SELECT id, citizen_id, role, password FROM users", [], (err, rows) => {
     if (err) {
@@ -86,32 +81,9 @@ app.get('/debug-users', (req, res) => {
 
 // Authentication routes (login, register, logout)
 app.use('/', authRouter);
-
-// --- Protected Routes ---
-
-// Handle redirects from old role-specific pages
-app.get('/dentist', authenticateToken, (req, res) => res.redirect('/patients'));
-app.get('/staff', authenticateToken, (req, res) => res.redirect('/patients'));
-
-// Protected application routes that require authentication
-app.use('/patients', authenticateToken, patientsRouter);
-app.use('/visits', authenticateToken, visitsRouter);
-app.use('/upload', authenticateToken, uploadRouter);
-app.use('/', authenticateToken, historyRouter);
-app.use('/', authenticateToken, patientRouter); // Added this line
-app.use('/', authenticateToken, paymentRouter);
-
-
-// --- System & Error Handling ---
-app.get('/health', (req, res) => {
-  db.get('SELECT 1', (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ ok: false, error: err.message });
-    }
-    res.json({ ok: true });
-  });
-});
+app.use('/dentist', authenticateToken, dentRouter);
+app.use('/staff', authenticateToken, staffRouter);
+app.use('/patient', authenticateToken, pantRouter);
 
 app.use((req, res) => res.status(404).send('Not Found'));
 app.use((err, req, res, next) => { 

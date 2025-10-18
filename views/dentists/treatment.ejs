@@ -11,7 +11,7 @@
 </head>
 <body>
     <div class="container my-4">
-        <form action="/visits" method="POST" enctype="multipart/form-data" id="visit-form">
+        <form action="/dentist/treatment" method="POST" enctype="multipart/form-data" id="visit-form">
             <input type="hidden" name="patient_id" value="<%= patient.id %>">
             <input type="hidden" name="procedures" id="procedures-input">
             <input type="file" id="xray-files-input" name="xrays" multiple style="display: none;">
@@ -30,7 +30,7 @@
                                 <p><strong>เพศ:</strong> <%= patient.gender %></p>
                                 <p><strong>CN:</strong> <%= patient.clinic_number %></p>
                             </div>
-                             <a href="/patients/<%= patient.id %>/history" class="btn btn-sm btn-outline-primary mt-2">ดูประวัติการรักษา</a>
+                             <a href="/dentist/patients/<%= patient.id %>/history" class="btn btn-sm btn-outline-primary mt-2">ดูประวัติการรักษา</a>
                             <hr class="my-4">
                             <div class="form-row">
                                 <div class="form-group col-md-6">
@@ -164,7 +164,7 @@
 
                         <div class="mt-4">
                             <button type="submit" class="btn btn-primary btn-block btn-lg">บันทึกการรักษา</button>
-                            <a href="/patients" class="btn btn-secondary btn-block">ยกเลิก</a>
+                            <a href="/dentist/patients" class="btn btn-secondary btn-block">ยกเลิก</a>
                         </div>
                     </div>
                 </div>

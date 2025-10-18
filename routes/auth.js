@@ -1,3 +1,4 @@
+// Checked Register
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -6,27 +7,27 @@ const jwt = require('jsonwebtoken');
 
 // Patient Registration
 router.get('/register', (req, res) => {
-  res.render('register', { 
-    title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic', 
-    message: null, 
+  res.render('register', {
+    title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic',
+    message: null,
     from: req.query.from || 'login'
   });
 });
 
 router.post('/register', async (req, res) => {
-  const { 
-    citizen_id, password, confirm_password, pre_name, first_name, last_name, 
-    gender, birth_date, phone, email, address, race, nationality, 
-    religion, drug_allergy 
+  const {
+    citizen_id, password, confirm_password, pre_name, first_name, last_name,
+    gender, birth_date, phone, email, address, race, nationality,
+    religion, drug_allergy
   } = req.body;
 
-  const from = req.body.from || 'login'; 
+  const from = req.body.from || 'login';
 
   const renderError = (message) => {
-    res.render('register', { 
-      title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic', 
-      message, 
-      from 
+    res.render('register', {
+      title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic',
+      message,
+      from
     });
   };
 
@@ -41,7 +42,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userSql = `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'patient')`;
-    db.run(userSql, [citizen_id, hashedPassword], function(err) {
+    db.run(userSql, [citizen_id, hashedPassword], function (err) {
       if (err) {
         return renderError(err.code === 'SQLITE_CONSTRAINT' ? 'เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว' : 'เกิดข้อผิดพลาดในการลงทะเบียนผู้ใช้');
       }
@@ -55,7 +56,7 @@ router.post('/register', async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const patientParams = [
-        userId, pre_name, first_name, last_name, gender, birth_date, phone, email, 
+        userId, pre_name, first_name, last_name, gender, birth_date, phone, email,
         address, race, nationality, religion, drug_allergy || 'ไม่มี'
       ];
 
@@ -63,11 +64,11 @@ router.post('/register', async (req, res) => {
         if (err) {
           return renderError('เกิดข้อผิดพลาดในการสร้างข้อมูลผู้ป่วย');
         }
-        
+
         // Check where to redirect
         if (from === 'patients') {
-          return res.redirect('/patients?success=true');
-        } 
+          return res.redirect('/');
+        }
         res.redirect('/login?success=registration_successful');
       });
     });
@@ -82,9 +83,9 @@ router.get('/dentist/register', (req, res) => {
 });
 
 router.post('/dentist/register', async (req, res) => {
-  const { 
-    license_number, pre_name, first_name, last_name, citizen_id, 
-    phone, password, confirm_password, email, specialty 
+  const {
+    license_number, pre_name, first_name, last_name, citizen_id,
+    phone, password, confirm_password, email, specialty
   } = req.body;
 
   const renderError = (message) => {
@@ -102,7 +103,7 @@ router.post('/dentist/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userSql = `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'dentist')`;
-    db.run(userSql, [citizen_id, hashedPassword], function(err) {
+    db.run(userSql, [citizen_id, hashedPassword], function (err) {
       if (err) {
         return renderError(err.code === 'SQLITE_CONSTRAINT' ? 'เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว' : 'เกิดข้อผิดพลาดในการสร้างบัญชีผู้ใช้');
       }
@@ -114,12 +115,12 @@ router.post('/dentist/register', async (req, res) => {
       `;
       const dentistParams = [userId, license_number, pre_name, first_name, last_name, phone, email, specialty || null];
 
-      db.run(dentistSql, dentistParams, function(err) {
+      db.run(dentistSql, dentistParams, function (err) {
         if (err) {
-            if (err.code === 'SQLITE_CONSTRAINT') {
-                return renderError('ข้อมูลที่กรอก (เช่น เลขใบประกอบ, อีเมล) อาจซ้ำกับที่มีในระบบ');
-            }
-            return renderError('เกิดข้อผิดพลาดในการบันทึกข้อมูลทันตแพทย์');
+          if (err.code === 'SQLITE_CONSTRAINT') {
+            return renderError('ข้อมูลที่กรอก (เช่น เลขใบประกอบ, อีเมล) อาจซ้ำกับที่มีในระบบ');
+          }
+          return renderError('เกิดข้อผิดพลาดในการบันทึกข้อมูลทันตแพทย์');
         }
         res.redirect('/login?success=dentist_registration_successful');
       });
@@ -162,7 +163,14 @@ router.post('/login', (req, res) => {
 
       res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 3600000 });
 
-      const redirectUrl = (user.role === 'dentist' || user.role === 'staff') ? '/patients' : '/patient-dashboard';
+      let redirectUrl;
+      if (user.role === 'dentist') {
+        redirectUrl = '/dentist/patients';
+      } else if (user.role === 'staff') {
+        redirectUrl = '/staff/patients'; // For Staff
+      } else {
+        redirectUrl = '/patient/dashboard'; // For User 
+      }
       res.redirect(redirectUrl);
     });
   });

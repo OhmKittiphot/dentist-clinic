@@ -5,15 +5,12 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>ประวัติการรักษา: <%= patient.first_name %> | Dentaist Clinic System</title>
-  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> 
   <link rel="stylesheet" href="/public/css/styles.css"/> 
   <link rel="stylesheet" href="/public/css/history-custom.css"/> 
 </head>
-<body data-user-role="<%= userRole %>">
-
-  <%- include('../partials/navbar') %>
+<body>
 
   <div id="success-alert" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none; position: fixed; top: 80px; right: 20px; z-index: 1050;">
     <div id="success-alert-message"></div>
@@ -35,12 +32,14 @@
         </div>
         <div>
           <% if (userRole === 'dentist') { %>
-            <a href="/visits/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+            <a href="/dentist/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+            <a href="/dentist/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
           <% } %>
           <% if (userRole === 'staff') { %>
-            <a href="/patients/<%= patient.id %>/edit" class="btn btn-warning">แก้ไขข้อมูลคนไข้</a>
+            <a href="/staff/<%= patient.id %>/edit" class="btn btn-warning">แก้ไขข้อมูลคนไข้</a>
+            <a href="/staff/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
           <% } %>
-          <a href="/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
+          
         </div>
     </div>
 
@@ -184,7 +183,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="detail-section"><h5>ทันตแพทย์ผู้รักษา</h5><p>${visit.doctor_name || 'N/A'}</p></div>
             <div class="detail-section"><h5>บันทึก/ข้อสังเกต</h5><p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p></div>
         `;
-
+        // -- X-RAY IMAGES --
+        if (xrays.length > 0) {
+            const imageElements = xrays.map(path => {
+                const correctedPath = path.startsWith('public/') ? '/' + path : '/public' + path;
+                return `<div class="col-md-4 mb-2"><a href="${correctedPath}" target="_blank"><img src="${correctedPath}" class="img-fluid rounded" loading="lazy"></a></div>`;
+            }).join('');
+            contentHtml += `
+            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${imageElements}</div></div>`;
+        }
         // -- PAYMENT SECTION --
         const userRole = document.body.dataset.userRole;
         const paymentDetails = JSON.parse(visit.payment_details_json || 'null');
@@ -212,17 +219,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         paymentHtml += '</div>';
         contentHtml += paymentHtml;
-
-        // -- X-RAY IMAGES --
-        if (xrays.length > 0) {
-            const imageElements = xrays.map(path => {
-                const correctedPath = path.startsWith('public/') ? '/' + path : '/public' + path;
-                return `<div class="col-md-4 mb-2"><a href="${correctedPath}" target="_blank"><img src="${correctedPath}" class="img-fluid rounded" loading="lazy"></a></div>`;
-            }).join('');
-            contentHtml += `
-            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${imageElements}</div></div>`;
-        }
-        
         detailContent.innerHTML = contentHtml;
     }
 
