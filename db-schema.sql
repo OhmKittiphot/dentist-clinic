@@ -1,0 +1,11 @@
+
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visit_id INTEGER NOT NULL,
+  staff_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  payment_date TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (visit_id) REFERENCES visits (id),
+  FOREIGN KEY (staff_id) REFERENCES users (id)
+);
