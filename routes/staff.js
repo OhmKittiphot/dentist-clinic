@@ -6,17 +6,13 @@ const { allowRoles } = require('../utils/auth');
 const multer = require('multer');
 const path = require('path');
 
-
-//
-// 🦷 1. GET /staff/patients - แสดงรายชื่อผู้ป่วย
-//
+// Get Staff Patients List
 router.get('/patients', allowRoles('staff'), (req, res, next) => {
     const searchQuery = req.query.search || '';
     const currentPage = parseInt(req.query.page) || 1;
     const limit = 15;
     const offset = (currentPage - 1) * limit;
     const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
-
     let countSql = `SELECT COUNT(id) AS count FROM patients`;
     let sql = `
       SELECT id, pre_name, first_name, last_name, phone, 
@@ -99,8 +95,46 @@ router.post('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
 });
 
 // Payment
-router.post('/payments', allowRoles('staff'), (req, res, next) => {
-    
+router.get('/payments', allowRoles('staff'), (req, res, next) => {
+    const sql = `
+        SELECT 
+            p.id,
+            p.visit_id,
+            p.staff_id,
+            p.amount,
+            p.payment_date,
+            p.status,
+            p.created_at,
+            v.patient_id,
+            pt.first_name || ' ' || pt.last_name AS patient_name,
+            d.first_name || ' ' || d.last_name AS doctor_name
+        FROM payments p
+        LEFT JOIN visits v ON p.visit_id = v.id
+        LEFT JOIN patients pt ON v.patient_id = pt.id
+        LEFT JOIN dentists d ON v.doctor_name = d.first_name || ' ' || d.last_name
+        ORDER BY p.created_at DESC;
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) return next(err);
+        res.render('staff/payments', {
+            user: req.user,
+            payments: rows
+        });
+    });
+});
+
+router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
+    const sql = `
+        UPDATE payments
+        SET status = 'paid',
+            payment_date = datetime('now')
+        WHERE id = ?
+    `;
+    db.run(sql, [req.params.id], (err) => {
+        if (err) return next(err);
+        res.redirect('/staff/payments');
+    });
 });
 
 module.exports = router;

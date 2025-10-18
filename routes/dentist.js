@@ -66,95 +66,89 @@ router.get('/patients', allowRoles('dentist'), (req, res, next) => {
 // Get Dentist Patients History
 router.get('/patients/:id/history', allowRoles('dentist'), async (req, res, next) => {
     const patientId = req.params.id;
-
     try {
-        // 🦷 ดึงข้อมูลผู้ป่วย
+        // ดึงข้อมูลผู้ป่วย
         const patient = await new Promise((resolve, reject) => {
             const sql = `
-        SELECT *, 
-               printf('CN%04d', id) as clinic_number,
-               (strftime('%Y', 'now') - strftime('%Y', birth_date)) - 
-               (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age
-        FROM patients 
-        WHERE id = ?`;
-            db.get(sql, [patientId], (err, row) => {
-                if (err) return reject(err);
-                resolve(row);
-            });
+                SELECT *, 
+                       printf('CN%04d', id) as clinic_number,
+                       (strftime('%Y', 'now') - strftime('%Y', birth_date)) - 
+                       (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age
+                FROM patients 
+                WHERE id = ?`;
+            db.get(sql, [patientId], (err, row) => err ? reject(err) : resolve(row));
         });
 
-        if (!patient) {
-            return res.status(404).send('Patient not found');
-        }
+        if (!patient) return res.status(404).send('Patient not found');
 
-        // 💊 ดึงข้อมูล visit ทั้งหมด
+        // ดึงข้อมูล visits พร้อม payment
         const visitsQuery = `
-      SELECT
-        v.id,
-        v.visit_date,
-        v.doctor_name,
-        v.vital_signs,
-        v.clinical_notes,
-        v.procedures_list,
-        v.xray_images_list,
-        p.id as payment_id,
-        p.amount as payment_amount,
-        p.payment_date
-      FROM visits v
-      LEFT JOIN payments p ON v.id = p.visit_id
-      WHERE v.patient_id = ?
-      ORDER BY v.visit_date DESC;
-    `;
+            SELECT v.*, 
+                   p.id AS payment_id,
+                   p.amount AS payment_amount,
+                   p.payment_date AS payment_date,
+                   p.status AS payment_status
+            FROM visits v
+            LEFT JOIN payments p ON v.id = p.visit_id
+            WHERE v.patient_id = ?
+            ORDER BY v.visit_date DESC;
+        `;
 
         const visits = await new Promise((resolve, reject) => {
             db.all(visitsQuery, [patientId], (err, rows) => {
                 if (err) return reject(err);
 
-                const processed = rows.map(v => {
+                const result = rows.map(v => {
+                    // Vital signs
                     let vitalSignsText = 'ไม่มีการบันทึก';
                     try {
                         const vs = JSON.parse(v.vital_signs || '{}');
                         const bp = vs.bp_sys && vs.bp_dia ? `BP: ${vs.bp_sys}/${vs.bp_dia} mmHg` : null;
                         const pulse = vs.pulse_rate ? `Pulse: ${vs.pulse_rate} bpm` : null;
                         vitalSignsText = [bp, pulse].filter(Boolean).join(' | ') || 'ไม่มีการบันทึก';
-                    } catch (e) { }
+                    } catch {}
 
+                    // Procedures summary
                     let proceduresSummary = '-';
                     try {
                         const procs = JSON.parse(v.procedures_list || '[]');
                         proceduresSummary = procs.map(p => p.description).join(', ') || '-';
-                    } catch (e) { }
+                    } catch {}
 
-                    const paymentStatus = v.payment_id ? 'ชำระแล้ว' : 'ยังไม่ชำระ';
+                    // Payment details (ต้องแน่ใจว่ามี)
+                    const paymentStatus = v.payment_status === 'paid' ? 'ชำระแล้ว' : 'ยังไม่ชำระ';
+                    const paymentDetails = v.payment_id ? {
+                        id: v.payment_id,
+                        amount: v.payment_amount || 0,
+                        date: v.payment_date || '-',
+                        status: paymentStatus
+                    } : null;
 
-                    // ✅ เพิ่มส่วนที่จำเป็นสำหรับรูป
                     return {
                         ...v,
                         vital_signs_text: vitalSignsText,
                         procedures_summary: proceduresSummary,
                         payment_status: paymentStatus,
+                        payment_details_json: JSON.stringify(paymentDetails), // ✅ สำคัญ!
                         procedures_list_json: v.procedures_list || '[]',
-                        xray_images_list_json: v.xray_images_list || '[]'  // ✅ ส่ง JSON string ของรูปไปให้ EJS
+                        xray_images_list_json: v.xray_images_list || '[]'
                     };
                 });
-
-
-                resolve(processed);
+                resolve(result);
             });
         });
 
-        // 🔹 Render หน้า history
         res.render('dentists/history', {
             patient,
             visits,
             userRole: req.user.role
         });
-
     } catch (err) {
         console.error(err);
         next(err);
     }
 });
+
 // Get Treatments History
 router.get('/new/:patient_id', allowRoles('dentist'), (req, res, next) => {
     const patient_id = req.params.patient_id;
@@ -190,28 +184,76 @@ router.get('/new/:patient_id', allowRoles('dentist'), (req, res, next) => {
     });
 });
 // ADD Treatment 
+// router.post('/treatment', allowRoles('dentist'), upload.array('xrays'), (req, res, next) => {
+//     const {
+//         patient_id, visit_date, doctor_name, bp_sys, bp_dia, pulse_rate,
+//         clinical_notes, procedures
+//     } = req.body;
+
+//     const xray_images = req.files ? req.files.map(file => path.join('public', 'uploads', 'xrays', file.filename).replace(/\\/g, '/')) : [];
+//     const vital_signs = { bp_sys, bp_dia, pulse_rate };
+
+//     const visitSql = `
+//         INSERT INTO visits (patient_id, visit_date, doctor_name, vital_signs, clinical_notes, xray_images_list, procedures_list) 
+//         VALUES (?, ?, ?, ?, ?, ?, ?)
+//     `;
+
+//     const visitParams = [
+//         patient_id, visit_date, doctor_name, JSON.stringify(vital_signs),
+//         clinical_notes, JSON.stringify(xray_images), procedures
+//     ];
+
+//     db.run(visitSql, visitParams, function (err) {
+//         if (err) return next(err);
+//         res.redirect(`/dentist/patients/${patient_id}/history?success=true`);
+//     });
+// });
+
+// ADD Treatment + Insert Payment
 router.post('/treatment', allowRoles('dentist'), upload.array('xrays'), (req, res, next) => {
     const {
         patient_id, visit_date, doctor_name, bp_sys, bp_dia, pulse_rate,
-        clinical_notes, procedures
+        clinical_notes, procedures, amount
     } = req.body;
 
-    const xray_images = req.files ? req.files.map(file => path.join('public', 'uploads', 'xrays', file.filename).replace(/\\/g, '/')) : [];
+    const xray_images = req.files
+        ? req.files.map(file => path.join('public', 'uploads', 'xrays', file.filename).replace(/\\/g, '/'))
+        : [];
+
     const vital_signs = { bp_sys, bp_dia, pulse_rate };
 
     const visitSql = `
-        INSERT INTO visits (patient_id, visit_date, doctor_name, vital_signs, clinical_notes, xray_images_list, procedures_list) 
+        INSERT INTO visits (patient_id, visit_date, doctor_name, vital_signs, clinical_notes, xray_images_list, procedures_list)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     const visitParams = [
-        patient_id, visit_date, doctor_name, JSON.stringify(vital_signs),
-        clinical_notes, JSON.stringify(xray_images), procedures
+        patient_id, visit_date, doctor_name,
+        JSON.stringify(vital_signs),
+        clinical_notes,
+        JSON.stringify(xray_images),
+        procedures
     ];
 
     db.run(visitSql, visitParams, function (err) {
         if (err) return next(err);
-        res.redirect(`/dentist/patients/${patient_id}/history?success=true`);
+        const visitId = this.lastID;
+        const paymentSql = `
+            INSERT INTO payments (visit_id, staff_id, amount, payment_date, status)
+            VALUES (?, ?, ?, datetime('now'), 'pending')
+        `;
+
+        const paymentParams = [
+            visitId,    
+            req.user.id,  
+            amount || 0 
+        ];
+
+        db.run(paymentSql, paymentParams, (err2) => {
+            if (err2) return next(err2);
+
+            res.redirect(`/dentist/patients/${patient_id}/history?success=true`);
+        });
     });
 });
 
