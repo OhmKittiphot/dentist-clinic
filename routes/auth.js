@@ -79,7 +79,7 @@ router.post('/register', async (req, res) => {
 
 // Dentist Registration
 router.get('/dentist/register', (req, res) => {
-  res.render('dentist/register', { message: null });
+  res.render('dentists/register', { message: null });
 });
 
 router.post('/dentist/register', async (req, res) => {
