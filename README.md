@@ -48,10 +48,15 @@ A simple, web-based clinic management system for a dental clinic, built with Nod
 
 You can use these accounts to log in and test different roles:
 
-*   **Dentist Account:**
+*   **Dentist Account: ไม่มีชื่อ**
     *   **Citizen ID:** `1111111111111`
     *   **Password:** `password123`
+
+*   **Dentist Account: คีมมี่**
+    *   **Citizen ID:** `1212312121111`
+    *   **Password:** `11111111`
 
 *   **Staff Account:**
     *   **Citizen ID:** `2222222222222`
     *   **Password:** `password123`
+
