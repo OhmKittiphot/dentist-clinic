@@ -1,4 +1,4 @@
- 
+
 const path = require('path');
 const express = require('express');
 const dotenv = require('dotenv');
@@ -35,7 +35,7 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"], 
       styleSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:"], 
+      imgSrc: ["'self'", "data:", "http://localhost:3000"], 
       connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdn.jsdelivr.net"],
     },
   },

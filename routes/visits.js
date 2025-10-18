@@ -54,7 +54,7 @@ router.post('/', allowRoles('dentist', 'staff'), upload.array('xrays'), (req, re
         clinical_notes, procedures
     } = req.body;
 
-    const xray_images = req.files ? req.files.map(file => path.join('/uploads', 'xrays', file.filename).replace(/\\/g, '/')) : [];
+    const xray_images = req.files ? req.files.map(file => path.join('public', 'uploads', 'xrays', file.filename).replace(/\\/g, '/')) : [];
     const vital_signs = { bp_sys, bp_dia, pulse_rate };
 
     const visitSql = `
