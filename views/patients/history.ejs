@@ -171,8 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if (xrays.length > 0) {
-             contentHtml += `
-            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${xrays.map(path => `<div class="col-md-4 mb-2"><a href="/${path}" target="_blank"><img src="/${path}" class="img-fluid rounded" loading="lazy"></a></div>`).join('')}</div></div>`;
+            const imageElements = xrays.map(path => {
+                // Normalize path for both old and new formats
+                const correctedPath = path.startsWith('public/') ? '/' + path : '/public' + path;
+                return `<div class="col-md-4 mb-2"><a href="${correctedPath}" target="_blank"><img src="${correctedPath}" class="img-fluid rounded" loading="lazy"></a></div>`;
+            }).join('');
+            contentHtml += `
+            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${imageElements}</div></div>`;
         }
 
         detailContent.innerHTML = contentHtml;
