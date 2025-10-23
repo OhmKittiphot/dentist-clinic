@@ -1,64 +1,71 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รายการการชำระเงิน</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-    <div class="container my-4">
-        <h2 class="mb-4">รายการการชำระเงินทั้งหมด</h2>
 
-        <table class="table table-striped table-bordered">
-            <thead class="thead-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>ผู้ป่วย</th>
-                    <th>Visit ID</th>
-                    <th>Staff ID</th>
-                    <th>ยอดชำระ (฿)</th>
-                    <th>วันชำระ</th>
-                    <th>สถานะ</th>
-                    <th>การดำเนินการ</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (payments.length === 0) { %>
-                    <tr><td colspan="8" class="text-center text-muted">ไม่มีข้อมูลการชำระเงิน</td></tr>
-                <% } else { %>
-                    <% payments.forEach(p => { %>
-                        <tr>
-                            <td><%= p.id %></td>
-                            <td><%= p.patient_name || '-' %></td>
-                            <td><%= p.visit_id %></td>
-                            <td><%= p.staff_id %></td>
-                            <td><%= p.amount.toFixed(2) %></td>
-                            <td><%= p.payment_date %></td>
-                            <td>
-                                <% if (p.status === 'paid') { %>
-                                    <span class="badge badge-success">ชำระแล้ว</span>
-                                <% } else { %>
-                                    <span class="badge badge-warning">รอชำระ</span>
-                                <% } %>
-                            </td>
-                            <td>
-                                <% if (p.status === 'pending') { %>
-                                    <form action="/staff/payments/<%= p.id %>/complete" method="POST" style="display:inline;">
-                                        <button type="submit" class="btn btn-sm btn-success">
-                                            <i class="fas fa-check"></i> ชำระแล้ว
-                                        </button>
-                                    </form>
-                                <% } else { %>
-                                    <span class="text-muted">-</span>
-                                <% } %>
-                            </td>
-                        </tr>
-                    <% }) %>
-                <% } %>
-            </tbody>
-        </table>
-    </div>
-    <script src="https://kit.fontawesome.com/a2e0f5a57d.js" crossorigin="anonymous"></script>
+<head>
+  <%- include('../partials/head') %>
+  <!-- ✅ แก้ path ไม่ต้องมี /public -->
+  <link rel="stylesheet" href="/public/css/staff-payments.css" />
+  <title>รายการการชำระเงิน</title>
+</head>
+
+<body>
+  <div class="app">
+    <%- include('../partials/navbar') %>
+    <main class="main-content">
+      <div class="container">
+        <h1 class="mb-4">รายการชำระเงินทั้งหมด</h1>
+
+        <div class="payments-table">
+          <div class="payments-thead">
+            <div>ID</div>
+            <div>ผู้ป่วย</div>
+            <div>ยอดชำระ (฿)</div>
+            <div>วัน-เวลาที่ชำระ</div>
+            <div>สถานะ</div>
+            <div>การดำเนินการ</div>
+          </div>
+
+          <% if (payments.length === 0) { %>
+            <div class="empty-payments">ไม่มีข้อมูลการชำระเงิน</div>
+          <% } else { %>
+            <% payments.forEach(p => { %>
+              <div class="payments-trow">
+                <div><%= p.id %></div>
+                <div><%= p.patient_name || '-' %></div>
+                <div><%= p.amount ? p.amount.toFixed(2) : '-' %></div>
+                <div>
+                  <%= p.payment_date
+                      ? new Date(p.payment_date).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+                      : '-' %>
+                </div>
+                <div>
+                  <% if (p.status === 'paid') { %>
+                    <span class="status-badge status-paid">ชำระแล้ว</span>
+                  <% } else { %>
+                    <span class="status-badge status-pending">รอชำระ</span>
+                  <% } %>
+                </div>
+                <div>
+                  <% if (p.status === 'pending') { %>
+                    <form action="/staff/payments/<%= p.id %>/complete" method="POST" style="display:inline;">
+                      <button type="submit" class="btn success">
+                        ยืนยันการชำระ
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span>-</span>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ✅ ปลอดภัยตาม CSP -->
+  <script nonce="<%= nonce %>"></script>
 </body>
+
 </html>

@@ -119,6 +119,7 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
         if (err) return next(err);
         res.render('staff/payments', {
             user: req.user,
+            userRole: req.user.role, 
             payments: rows
         });
     });
