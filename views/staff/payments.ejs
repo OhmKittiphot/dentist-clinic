@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
   <%- include('../partials/head') %>
-  <!-- ✅ แก้ path ไม่ต้องมี /public -->
   <link rel="stylesheet" href="/public/css/staff-payments.css" />
   <title>รายการการชำระเงิน</title>
 </head>
@@ -13,8 +11,38 @@
     <%- include('../partials/navbar') %>
     <main class="main-content">
       <div class="container">
-        <h1 class="mb-4">รายการชำระเงินทั้งหมด</h1>
+        <h1 class="mb-4">รายการการชำระเงินทั้งหมด</h1>
 
+        <!-- 🔎 Toolbar ค้นหา/กรอง -->
+        <form class="payments-toolbar" method="GET" action="">
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="pageSize" value="<%= pageSize %>" />
+
+          <div class="toolbar-row">
+            <div class="toolbar-field">
+              <label>ค้นหาชื่อผู้ป่วย</label>
+              <input type="text" name="q" placeholder="พิมพ์ชื่อ-นามสกุล"
+                     value="<%= q || '' %>">
+            </div>
+
+            <div class="toolbar-field">
+              <label>ตั้งแต่วันที่</label>
+              <input type="date" name="date_from" value="<%= date_from || '' %>">
+            </div>
+
+            <div class="toolbar-field">
+              <label>ถึงวันที่</label>
+              <input type="date" name="date_to" value="<%= date_to || '' %>">
+            </div>
+
+            <div class="toolbar-actions">
+              <button type="submit" class="btn primary">ค้นหา</button>
+              <a href="/staff/payments?page=1&pageSize=<%= pageSize %>" class="btn ghost">ล้างค่าค้นหา</a>
+            </div>
+          </div>
+        </form>
+
+        <!-- ตาราง (ไม่มี Visit/Staff ID) -->
         <div class="payments-table">
           <div class="payments-thead">
             <div>ID</div>
@@ -25,18 +53,18 @@
             <div>การดำเนินการ</div>
           </div>
 
-          <% if (payments.length === 0) { %>
+          <% if (!payments || payments.length === 0) { %>
             <div class="empty-payments">ไม่มีข้อมูลการชำระเงิน</div>
           <% } else { %>
             <% payments.forEach(p => { %>
               <div class="payments-trow">
                 <div><%= p.id %></div>
                 <div><%= p.patient_name || '-' %></div>
-                <div><%= p.amount ? p.amount.toFixed(2) : '-' %></div>
+                <div><%= typeof p.amount === 'number' ? p.amount.toFixed(2) : '-' %></div>
                 <div>
                   <%= p.payment_date
-                      ? new Date(p.payment_date).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
-                      : '-' %>
+                        ? new Date(p.payment_date).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+                        : '-' %>
                 </div>
                 <div>
                   <% if (p.status === 'paid') { %>
@@ -47,10 +75,8 @@
                 </div>
                 <div>
                   <% if (p.status === 'pending') { %>
-                    <form action="/staff/payments/<%= p.id %>/complete" method="POST" style="display:inline;">
-                      <button type="submit" class="btn success">
-                        ยืนยันการชำระ
-                      </button>
+                    <form action="/staff/payments/<%= p.id %>/complete?page=<%= page %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>" method="POST" style="display:inline;">
+                      <button type="submit" class="btn success">ยืนยันการชำระ</button>
                     </form>
                   <% } else { %>
                     <span>-</span>
@@ -60,12 +86,71 @@
             <% }) %>
           <% } %>
         </div>
+
+        <!-- Pagination -->
+        <nav class="pager" aria-label="pagination">
+          <div class="pager-left">
+            <% if (page > 1) { %>
+              <a class="pager-btn" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">ก่อนหน้า</a>
+            <% } else { %>
+              <span class="pager-btn disabled">ก่อนหน้า</span>
+            <% } %>
+          </div>
+
+          <div class="pager-pages">
+            <% 
+              const windowSize = 2;
+              const startPage = Math.max(1, page - windowSize);
+              const endPage = Math.min(totalPages, page + windowSize);
+            %>
+
+            <% if (startPage > 1) { %>
+              <a class="pager-num" href="?page=1&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">1</a>
+              <% if (startPage > 2) { %><span class="pager-ellipsis">…</span><% } %>
+            <% } %>
+
+            <% for (let i = startPage; i <= endPage; i++) { %>
+              <% if (i === page) { %>
+                <span class="pager-num active"><%= i %></span>
+              <% } else { %>
+                <a class="pager-num" href="?page=<%= i %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>"><%= i %></a>
+              <% } %>
+            <% } %>
+
+            <% if (endPage < totalPages) { %>
+              <% if (endPage < totalPages - 1) { %><span class="pager-ellipsis">…</span><% } %>
+              <a class="pager-num" href="?page=<%= totalPages %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>"><%= totalPages %></a>
+            <% } %>
+          </div>
+
+          <div class="pager-right">
+            <% if (page < totalPages) { %>
+              <a class="pager-btn" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">ถัดไป</a>
+            <% } else { %>
+              <span class="pager-btn disabled">ถัดไป</span>
+            <% } %>
+          </div>
+        </nav>
+
+        <!-- Page size selector -->
+        <form class="page-size-form" method="GET">
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="q" value="<%= q || '' %>" />
+          <input type="hidden" name="date_from" value="<%= date_from || '' %>" />
+          <input type="hidden" name="date_to" value="<%= date_to || '' %>" />
+          <label>แสดงต่อหน้า:</label>
+          <select name="pageSize" onchange="this.form.submit()">
+            <option value="10" <%= pageSize==10 ? 'selected' : '' %>>10</option>
+            <option value="20" <%= pageSize==20 ? 'selected' : '' %>>20</option>
+            <option value="50" <%= pageSize==50 ? 'selected' : '' %>>50</option>
+          </select>
+          <span class="muted">รวม <%= total %> รายการ</span>
+        </form>
+
       </div>
     </main>
   </div>
 
-  <!-- ✅ ปลอดภัยตาม CSP -->
   <script nonce="<%= nonce %>"></script>
 </body>
-
 </html>

@@ -1,84 +1,195 @@
 /* public/css/staff-payments.css */
 
+/* ========== Variables (สีเดิม) ========== */
+:root {
+  --brand-primary: #2f6fb7;    /* น้ำเงินเดิม */
+  --brand-secondary: #f3f5ff;  /* hover ฟ้าอ่อน */
+  --bg: #fafbff;               /* แถวคู่ */
+  --border-color: #e0e0e0;
+  --text-primary: #212121;
+  --text-secondary: #6b7280;
+}
+
+/* Layout */
 .main-content > .container {
-    padding: 2rem;
+  padding: 2rem;
+  color: var(--text-primary);
 }
 
-.payments-table {
-  background: #fff; /* Card-like background */
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 14px;
-  overflow: hidden;
+/* Toolbar: Search/Filter */
+.payments-toolbar {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: block;
+}
+.toolbar-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.toolbar-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.toolbar-field input[type="text"],
+.toolbar-field input[type="date"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   font-size: 14px;
+  outline: none;
+}
+.toolbar-field input:focus {
+  border-color: #2f6fb7;
+  box-shadow: 0 0 0 3px rgba(91,110,225,0.15);
+}
+.toolbar-actions { display: flex; gap: 8px; }
+.btn.primary {
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn.primary:hover { filter: brightness(0.95); }
+.btn.ghost {
+  background: #fff;
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-primary);
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn.ghost:hover { background: var(--brand-secondary); }
+
+/* Table Card */
+.payments-table {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: auto;
+  font-size: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  max-height: 70vh;
+  min-width: 960px;
 }
 
+/* Grid layout (6 คอลัมน์) */
 .payments-thead,
 .payments-trow {
   display: grid;
-  grid-template-columns: 0.5fr 1.5fr 0.8fr 0.8fr 1fr 1fr 1fr 1.2fr;
+  grid-template-columns: 0.6fr 1.6fr 1fr 1.4fr 1fr 1.2fr;
   gap: 16px;
   align-items: center;
   padding: 10px 16px;
 }
 
+/* Header */
 .payments-thead {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
   font-weight: 600;
   color: #fff;
   background: var(--brand-primary);
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 2px solid #2f6fb7;
+  box-shadow: 0 2px 6px rgba(91,110,225,0.15);
 }
 
-.payments-trow {
-  border-top: 1px solid var(--border-color);
-}
+/* Rows */
+.payments-trow { border-top: 1px solid var(--border-color); transition: background-color .15s ease, box-shadow .15s ease; }
+.payments-trow:nth-child(even) { background-color: var(--bg); }
+.payments-trow:hover { background-color: var(--brand-secondary); }
 
-.payments-trow:nth-child(even) {
-    background-color: var(--bg);
-}
-
-.payments-trow:hover {
-    background-color: var(--brand-secondary);
-}
-
+/* Status badge */
 .status-badge {
-    padding: 5px 10px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 12px;
-    text-align: center;
-    text-transform: uppercase;
-    display: inline-block;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  text-transform: uppercase;
+  display: inline-block;
 }
-
 .status-paid {
-    background-color: #e2f5ea;
-    color: #34a853;
+  background-color: #e2f5ea;
+  color: #34a853;
+  border: 1px solid #bfe9ce;
 }
-
 .status-pending {
-    background-color: #feefc3;
-    color: #fbbc05;
+  background-color: #feefc3;
+  color: #fbbc05;
+  border: 1px solid #f6df8a;
 }
 
+/* Button in rows */
 .btn.success {
-    background-color: #34a853;
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
+  background-color: #34a853;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  transition: background-color .15s ease, box-shadow .15s ease;
 }
-.btn.success:hover {
-    background-color: #2c8f45;
-}
+.btn.success:hover { background-color: #2c8f45; }
 
+/* Empty */
 .empty-payments {
   text-align: center;
   padding: 3rem;
   color: var(--text-secondary);
+  background: #fff;
+}
+
+/* Pagination */
+.pager {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 16px;
+}
+.pager-btn, .pager-num {
+  display: inline-block; padding: 6px 10px;
+  border: 1px solid var(--border-color); border-radius: 8px;
+  text-decoration: none; color: var(--text-primary); background: #fff;
+  transition: all .15s ease;
+}
+.pager-num.active { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+.pager-btn:hover, .pager-num:hover { background: var(--brand-secondary); }
+.pager-btn.disabled { opacity: .5; pointer-events: none; }
+.pager-ellipsis { padding: 0 6px; color: var(--text-secondary); }
+.page-size-form { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.page-size-form select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
+.muted { color: var(--text-secondary); font-size: 12px; }
+
+/* Scrollbar + Responsive */
+.payments-table::-webkit-scrollbar { height: 8px; width: 8px; }
+.payments-table::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+.payments-table::-webkit-scrollbar-thumb:hover { background: #999; }
+
+@media (max-width: 1024px) {
+  .toolbar-row { grid-template-columns: 1fr 1fr; }
+  .payments-thead, .payments-trow { padding: 10px 12px; gap: 12px; }
+}
+@media (max-width: 640px) {
+  .toolbar-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .payments-table { min-width: 820px; }
 }
