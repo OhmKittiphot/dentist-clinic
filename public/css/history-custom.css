@@ -1,3 +1,19 @@
+/* ===== Fallback สีธีม ถ้าโปรเจ็กต์ไม่มี --blue-* ===== */
+:root {
+  --blue-700: var(--brand, #2f6fb7);
+}
+@supports (color: color-mix(in srgb, white 0%, black 0%)) {
+  :root {
+    --blue-100: color-mix(in srgb, var(--blue-700) 18%, white);
+    --blue-050: color-mix(in srgb, var(--blue-700) 9%, white);
+  }
+}
+:root {
+  --blue-100: var(--blue-100, #e6eff8);
+  --blue-050: var(--blue-050, #f2f7fc);
+}
+
+/* ===== Toolbar ===== */
 .history-toolbar {
   display: flex;
   gap: 10px;
@@ -13,7 +29,6 @@
   position: relative;
   flex-grow: 1;
 }
-
 .search-wrapper input {
   width: 100%;
   padding: 10px 10px 10px 35px;
@@ -21,7 +36,6 @@
   border-radius: 8px;
   font-size: 1rem;
 }
-
 .search-wrapper i {
   position: absolute;
   left: 10px;
@@ -29,185 +43,209 @@
   transform: translateY(-50%);
   color: var(--ink-dim);
 }
-
 .date-group {
   display: flex;
   align-items: center;
   gap: 5px;
 }
-
 .date-group label {
   font-size: 0.9rem;
   color: var(--ink-dim);
 }
-
 .date-group input[type="date"] {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 0.9rem;
-  height: 38px; /* Match other input heights */
+  height: 38px;
 }
 
+/* ===== Layout หลัก ===== */
+.container-fluid {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+}
 .main-content {
   display: flex;
   gap: 20px;
   margin-top: 20px;
+  flex: 1;
+  min-height: 0;
 }
 
 .panel {
-  background-color: var(--card); /* Set panel background to white */
+  background-color: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
+/* ===== พาเนลซ้าย ===== */
 .list-panel {
   flex: 2;
-  max-width: 40%; /* Adjust as needed */
+  max-width: 40%;
+  min-width: 320px;
+  min-height: 0;
+}
+
+/* คอนเทนเนอร์เลื่อนฝั่งซ้าย */
+.visit-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
 
-.detail-panel {
-  flex: 3;
-  max-width: 60%; /* Adjust as needed */
-}
-
+/* หัวตารางฝั่งซ้าย sticky */
 .visit-list-header {
   display: grid;
-  grid-template-columns: 1.2fr 2fr 1fr;
+  grid-template-columns: 1.2fr 2fr 1fr 1fr;
   gap: 10px;
   padding: 12px 15px;
-  background-color: var(--blue-700); /* Dark blue background for header from styles.css */
-  color: white; /* White text for header */
+  background-color: var(--blue-700);
+  color: white;
   font-weight: bold;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
-  margin-bottom: 0px; /* Adjusted margin-bottom to 0 */
-  align-items: center; /* Vertically align text */
-  position: sticky; /* Make header sticky */
-  top: 0; /* Stick to the top */
-  z-index: 1; /* Ensure it's above other content */
 }
-
 .visit-list-body {
-  flex-grow: 1;
-  overflow-y: auto;
+  flex: 1;
 }
 
+/* แถวรายการ */
 .visit-item {
   display: grid;
-  grid-template-columns: 1.2fr 2fr 1fr;
+  grid-template-columns: 1.2fr 2fr 1fr 1fr;
   gap: 10px;
   padding: 12px 15px;
-  background-color: var(--card); /* Explicitly white background for items */
+  background-color: var(--card);
   border-bottom: 1px solid var(--line);
   color: var(--ink);
-  text-decoration: none !important; /* Removed underline */
+  text-decoration: none !important;
   transition: background-color 0.2s ease;
   border-radius: 0;
 }
-
-.visit-item:first-of-type {
-  /* Removed specific border-radius here as the header handles the top corners */
-}
-
-.visit-item:last-of-type {
-  border-bottom-left-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
-  border-bottom: none;
-}
-
 .visit-item:hover {
-  background-color: var(--blue-050); /* Light blue background on hover from styles.css */
+  background-color: var(--blue-050);
 }
-
 .visit-item.active {
-  background-color: var(--blue-100); /* Light blue background for active item from styles.css */
+  background-color: var(--blue-100);
   font-weight: 600;
 }
 
+/* ===== พาเนลขวา ===== */
+.detail-panel {
+  flex: 3;
+  max-width: 60%;
+  min-width: 360px;
+  min-height: 0;
+}
+
+/* คอนเทนเนอร์เลื่อนฝั่งขวา */
+.detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ✅ หัวรายละเอียดฝั่งขวา "ไม่ sticky" แล้ว */
 .detail-panel-header {
   font-size: 1.2rem;
   font-weight: bold;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+  background-color: var(--blue-700);
+  color: #fff;
+  padding: 12px 15px;
+  border-radius: var(--radius);
+  position: static;  /* ❌ ไม่ sticky แล้ว */
+  top: auto;
+  z-index: auto;
+  box-shadow: none;  /* ไม่มีเงา */
+}
+.detail-panel-header * {
+  color: inherit !important;
+  background: transparent !important;
+}
+
+/* เนื้อหา */
+.detail-content {
+  padding-top: 4px;
   color: var(--ink);
 }
-
-.detail-content {
-  padding-top: 10px;
-}
-
 .detail-content-empty {
   color: var(--ink-dim);
   text-align: center;
   padding: 50px;
 }
 
+/* Section */
 .detail-section {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line);
 }
-
 .detail-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
-
 .detail-section h5 {
-    color: var(--blue-700); /* Dark blue for section headers from styles.css */
-    font-weight: bold;
-    margin-bottom: 10px;
+  color: var(--blue-700);
+  font-weight: bold;
+  margin-bottom: 10px;
 }
-
 .detail-section ul {
-    list-style-type: disc;
-    padding-left: 20px;
-    margin: 0;
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 0;
 }
-
 .detail-section li {
-    margin-bottom: 5px;
+  margin-bottom: 5px;
 }
 
+/* Chips */
 .patient-info-chips {
   display: flex;
   gap: 10px;
   margin-top: 10px;
 }
-
 .chip {
-  background-color: var(--blue-100); /* Light blue background for chips from styles.css */
-  color: var(--blue-700); /* Darker blue text for chips from styles.css */
+  background-color: var(--blue-100);
+  color: var(--blue-700);
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 500;
 }
-
 .patient-name-header {
-  color: var(--blue-700); /* Dark blue color for patient name from styles.css */
+  color: var(--blue-700);
   font-weight: bold;
   margin-bottom: 5px;
 }
 
-/* Ensure the layout respects the intended two-panel structure */
-.container-fluid {
-    display: flex;
-    flex-direction: column;
-    height: 100vh; /* Make sure it takes full viewport height */
-}
-
-/* Responsive adjustments for smaller screens */
+/* Responsive */
 @media (max-width: 768px) {
-    .main-content {
-        flex-direction: column;
-    }
-
-    .list-panel, .detail-panel {
-        max-width: 100%;
-    }
+  .main-content {
+    flex-direction: column;
+  }
+  .list-panel,
+  .detail-panel {
+    max-width: 100%;
+  }
+  .visit-list-header,
+  .visit-item {
+    grid-template-columns: 1.2fr 2fr 1fr;
+  }
 }

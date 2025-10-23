@@ -1,112 +1,117 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>ประวัติการรักษา: <%= patient.first_name %> | Dentaist Clinic System</title>
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> 
   <link rel="stylesheet" href="/public/css/styles.css"/> 
   <link rel="stylesheet" href="/public/css/history-custom.css"/> 
 </head>
-<body>
+<body data-user-role="<%= userRole %>">
 
-  <div id="success-alert" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none; position: fixed; top: 80px; right: 20px; z-index: 1050;">
+  <div id="success-alert" class="alert alert-success alert-dismissible fade show" role="alert"
+       style="display: none; position: fixed; top: 80px; right: 20px; z-index: 1050;">
     <div id="success-alert-message"></div>
     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
   </div>
 
-
   <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="patient-name-header"><%= patient.first_name %> <%= patient.last_name %></h3>
-            <div class="patient-info-chips">
-                <span class="chip">CN: <%= patient.clinic_number %></span>
-                <span class="chip">อายุ: <%= patient.age %> ปี</span>
-                <span class="chip">เพศ: <%= patient.gender %></span>
-            </div>
+      <div>
+        <h3 class="patient-name-header"><%= patient.first_name %> <%= patient.last_name %></h3>
+        <div class="patient-info-chips">
+          <span class="chip">CN: <%= patient.clinic_number %></span>
+          <span class="chip">อายุ: <%= patient.age %> ปี</span>
+          <span class="chip">เพศ: <%= patient.gender %></span>
         </div>
-        <div>
-          <% if (userRole === 'dentist') { %>
-            <a href="/dentist/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
-            <a href="/dentist/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
-          <% } %>
-          <% if (userRole === 'staff') { %>
-            <a href="/staff/<%= patient.id %>/edit" class="btn btn-warning">แก้ไขข้อมูลคนไข้</a>
-            <a href="/staff/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
-          <% } %>
-          
-        </div>
+      </div>
+      <div>
+        <% if (userRole === 'dentist') { %>
+          <a href="/dentist/new/<%= patient.id %>" class="btn btn-primary">+ บันทึกการรักษา</a>
+          <a href="/dentist/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
+        <% } %>
+        <% if (userRole === 'staff') { %>
+          <a href="/staff/<%= patient.id %>/edit" class="btn btn-warning">แก้ไขข้อมูลคนไข้</a>
+          <a href="/staff/patients" class="btn btn-secondary">กลับไปหน้ารายชื่อ</a>
+        <% } %>
+      </div>
     </div>
 
     <div class="main-content">
       <!-- Left Panel: List -->
       <div class="panel list-panel">
         <div class="history-toolbar">
-            <div class="search-wrapper">
-                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted)"></i>
-                <input type="search" id="search-input" placeholder="ค้นหา (แพทย์/หัตถการ/หมายเหตุ)">
-            </div>
-            <div class="date-group">
-                <label for="start-date-input">จาก</label>
-                <input type="date" id="start-date-input">
-            </div>
-            <div class="date-group">
-                <label for="end-date-input">ถึง</label>
-                <input type="date" id="end-date-input">
-            </div>
+          <div class="search-wrapper">
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted)"></i>
+            <input type="search" id="search-input" placeholder="ค้นหา (แพทย์/หัตถการ/หมายเหตุ)">
+          </div>
+          <div class="date-group">
+            <label for="start-date-input">จาก</label>
+            <input type="date" id="start-date-input">
+          </div>
+          <div class="date-group">
+            <label for="end-date-input">ถึง</label>
+            <input type="date" id="end-date-input">
+          </div>
         </div>
 
-        <div class="visit-list-header">
-          <div>วันที่ / เวลา</div>
-          <div>หัตถการ / สรุป</div>
-          <div>ทันตแพทย์</div>
-          <div>สถานะ</div>
-        </div>
+        <!-- ทำคอนเทนเนอร์เลื่อนให้ฝั่งซ้าย -->
+        <div class="visit-scroll">
+          <div class="visit-list-header">
+            <div>วันที่ / เวลา</div>
+            <div>หัตถการ / สรุป</div>
+            <div>ทันตแพทย์</div>
+            <div>สถานะ</div>
+          </div>
 
-        <div class="visit-list-body" id="visit-list-body">
+          <div class="visit-list-body" id="visit-list-body">
             <% if(visits.length > 0) { %>
-                <% visits.forEach((visit, index) => { 
-                    const doctorName = visit.doctor_name || 'N/A';
-                    const clinicalNotes = visit.clinical_notes || '';
-                    const proceduresSummary = visit.procedures_summary || '-';
-                    const searchText = (doctorName + ' ' + clinicalNotes + ' ' + proceduresSummary).toLowerCase();
-                %> 
-                    <a href="#" class="visit-item <%= index === 0 ? 'active' : '' %>" 
-                       data-visit-id="<%= visit.id %>"
-                       data-search-text="<%= searchText %>"
-                       data-visit-date-iso="<%= new Date(visit.visit_date).toISOString().split('T')[0] %>">
-                        
-                        <div><%= new Date(visit.visit_date).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ') %></div>
-                        <div><%= proceduresSummary %></div>
-                        <div><%= doctorName %></div>
-                        <div>
-                          <span class="badge <%= visit.payment_status === 'ชำระแล้ว' ? 'badge-success' : 'badge-warning' %>">
-                            <%= visit.payment_status %>
-                          </span>
-                        </div>
-                    </a>
-                <% }); %>
+              <% visits.forEach((visit, index) => { 
+                const doctorName = visit.doctor_name || 'N/A';
+                const clinicalNotes = visit.clinical_notes || '';
+                const proceduresSummary = visit.procedures_summary || '-';
+                const searchText = (doctorName + ' ' + clinicalNotes + ' ' + proceduresSummary).toLowerCase();
+              %> 
+                <a href="#" class="visit-item <%= index === 0 ? 'active' : '' %>" 
+                   data-visit-id="<%= visit.id %>"
+                   data-search-text="<%= searchText %>"
+                   data-visit-date-iso="<%= new Date(visit.visit_date).toISOString().split('T')[0] %>">
+                  <div><%= new Date(visit.visit_date).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ') %></div>
+                  <div><%= proceduresSummary %></div>
+                  <div><%= doctorName %></div>
+                  <div>
+                    <span class="badge <%= visit.payment_status === 'ชำระแล้ว' ? 'badge-success' : 'badge-warning' %>">
+                      <%= visit.payment_status %>
+                    </span>
+                  </div>
+                </a>
+              <% }); %>
             <% } else { %>
-                <div class="text-center p-4 text-muted">ไม่มีประวัติการรักษา</div>
+              <div class="text-center p-4 text-muted">ไม่มีประวัติการรักษา</div>
             <% } %>
+          </div>
         </div>
       </div>
 
       <!-- Right Panel: Details -->
       <div class="panel detail-panel">
-        <div class="detail-panel-header" id="detail-header">รายละเอียดการรักษา</div>
-        <div class="detail-content" id="detail-content">
+        <!-- ทำคอนเทนเนอร์เลื่อนให้ฝั่งขวา -->
+        <div class="detail-scroll">
+          <div class="detail-panel-header" id="detail-header">รายละเอียดการรักษา</div>
+          <div class="detail-content" id="detail-content">
             <!-- Details populated by script -->
+          </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- libs -->
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -114,25 +119,22 @@
     <%- JSON.stringify(visits) %>
   </script>
 
-<script nonce="<%= locals.nonce %>">
-document.addEventListener('DOMContentLoaded', function() {
+  <script nonce="<%= locals.nonce %>">
+  document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const successMessage = urlParams.get('success_message');
     if (successMessage) {
-        const successAlert = document.getElementById('success-alert');
-        document.getElementById('success-alert-message').textContent = decodeURIComponent(successMessage);
-        $(successAlert).show();
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/&?success_message=[^&]*/, ''));
-        setTimeout(() => {
-            $(successAlert).fadeOut('slow');
-        }, 4000); 
+      const successAlert = document.getElementById('success-alert');
+      document.getElementById('success-alert-message').textContent = decodeURIComponent(successMessage);
+      $(successAlert).show();
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/&?success_message=[^&]*/, ''));
+      setTimeout(() => { $(successAlert).fadeOut('slow'); }, 4000); 
     }
 
     const visitsDataElement = document.getElementById('visits-data');
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = visitsDataElement.textContent;
     const allVisitsData = JSON.parse(tempDiv.textContent);
-    
     const visitsMap = new Map(allVisitsData.map(v => [v.id.toString(), v]));
 
     const visitListBody = document.getElementById('visit-list-body');
@@ -144,138 +146,133 @@ document.addEventListener('DOMContentLoaded', function() {
     const endDateInput = document.getElementById('end-date-input');
 
     function updateDetails(visitId) {
-        const visit = visitsMap.get(visitId);
+      const visit = visitsMap.get(visitId);
+      if (!visit) {
+        detailHeader.textContent = 'รายละเอียดการรักษา';
+        detailContent.innerHTML = `<div class="detail-content-empty">เลือกรายการจากด้านซ้ายเพื่อดูรายละเอียด</div>`;
+        return;
+      }
 
-        if (!visit) {
-            detailHeader.textContent = 'รายละเอียดการรักษา';
-            detailContent.innerHTML = `<div class="detail-content-empty">เลือกรายการจากด้านซ้ายเพื่อดูรายละเอียด</div>`;
-            return;
-        }
-
-        const visitDateFormatted = new Date(visit.visit_date).toLocaleString('th-TH', {
-            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      const visitDateFormatted = new Date(visit.visit_date).toLocaleString('th-TH', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      detailHeader.textContent = `รายละเอียด (${visitDateFormatted})`;
+      
+      let procedures = [];
+      try {
+        procedures = JSON.parse(visit.procedures_list_json || '[]');
+        procedures = procedures.filter(p => (p.description && p.description.trim() !== '') || (p.tooth_no && p.tooth_no.trim() !== ''));
+        procedures.sort((a, b) => {
+          const toothA = parseInt(a.tooth_no, 10);
+          const toothB = parseInt(b.tooth_no, 10);
+          if (!isNaN(toothA) && !isNaN(toothB)) return toothA - toothB;
+          if (!isNaN(toothA)) return -1;
+          if (!isNaN(toothB)) return 1;
+          return (a.description || '').localeCompare(b.description || '');
         });
-        detailHeader.textContent = `รายละเอียด (${visitDateFormatted})`;
-        
-        let procedures = [];
-        try {
-            procedures = JSON.parse(visit.procedures_list_json || '[]');
-            procedures = procedures.filter(p => (p.description && p.description.trim() !== '') || (p.tooth_no && p.tooth_no.trim() !== ''));
-            procedures.sort((a, b) => {
-                const toothA = parseInt(a.tooth_no, 10);
-                const toothB = parseInt(b.tooth_no, 10);
-                if (!isNaN(toothA) && !isNaN(toothB)) return toothA - toothB;
-                if (!isNaN(toothA)) return -1;
-                if (!isNaN(toothB)) return 1;
-                return (a.description || '').localeCompare(b.description || '');
-            });
-        } catch(e) { console.error("Error parsing procedures JSON for visit ID:", visit.id, e); procedures = []; }
+      } catch(e) { procedures = []; }
 
-        let xrays = [];
-        try {
-            xrays = JSON.parse(visit.xray_images_list_json || '[]');
-        } catch(e) { console.error("Error parsing xrays JSON for visit ID:", visit.id, e); xrays = []; }
+      let xrays = [];
+      try { xrays = JSON.parse(visit.xray_images_list_json || '[]'); } catch(e) { xrays = []; }
 
-        // -- BASE DETAILS --
-        let contentHtml = `
-            <div class="detail-section"><h5>Vital Signs</h5><p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p></div>
-            <div class="detail-section"><h5>รายการหัตถการ</h5>${procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}</div>
-            <div class="detail-section"><h5>ทันตแพทย์ผู้รักษา</h5><p>${visit.doctor_name || 'N/A'}</p></div>
-            <div class="detail-section"><h5>บันทึก/ข้อสังเกต</h5><p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p></div>
+      let contentHtml = `
+        <div class="detail-section"><h5>Vital Signs</h5><p>${visit.vital_signs_text || 'ไม่มีข้อมูล'}</p></div>
+        <div class="detail-section"><h5>รายการหัตถการ</h5>${
+          procedures.length > 0 ? `<ul>${procedures.map(p => `<li>${p.description}${p.tooth_no ? ` (ซี่ ${p.tooth_no})` : ''}</li>`).join('')}</ul>` : '<p>ไม่มีข้อมูล</p>'}
+        </div>
+        <div class="detail-section"><h5>ทันตแพทย์ผู้รักษา</h5><p>${visit.doctor_name || 'N/A'}</p></div>
+        <div class="detail-section"><h5>บันทึก/ข้อสังเกต</h5><p>${visit.clinical_notes || 'ไม่มีบันทึก'}</p></div>
+      `;
+
+      if (xrays.length > 0) {
+        const imageElements = xrays.map(path => {
+          const correctedPath = path.startsWith('public/') ? '/' + path : '/public' + path;
+          return `<div class="col-md-4 mb-2"><a href="${correctedPath}" target="_blank"><img src="${correctedPath}" class="img-fluid rounded" loading="lazy"></a></div>`;
+        }).join('');
+        contentHtml += `<div class="detail-section"><h5>X-Ray Images</h5><div class="row">${imageElements}</div></div>`;
+      }
+
+      const userRole = document.body.dataset.userRole;
+      const paymentDetails = JSON.parse(visit.payment_details_json || 'null');
+
+      let paymentHtml = '<div class="detail-section"><h5><i class="fas fa-file-invoice-dollar"></i> การชำระเงิน</h5>';
+      if (visit.payment_status === 'ชำระแล้ว' && paymentDetails) {
+        paymentHtml += `
+          <p>
+            <strong>สถานะ:</strong> <span class="badge badge-success">ชำระแล้ว</span><br>
+            <strong>จำนวน:</strong> ${parseFloat(paymentDetails.amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท<br>
+            <strong>วันที่ชำระ:</strong> ${paymentDetails.date}
+          </p>
         `;
-        // -- X-RAY IMAGES --
-        if (xrays.length > 0) {
-            const imageElements = xrays.map(path => {
-                const correctedPath = path.startsWith('public/') ? '/' + path : '/public' + path;
-                return `<div class="col-md-4 mb-2"><a href="${correctedPath}" target="_blank"><img src="${correctedPath}" class="img-fluid rounded" loading="lazy"></a></div>`;
-            }).join('');
-            contentHtml += `
-            <div class="detail-section"><h5>X-Ray Images</h5><div class="row">${imageElements}</div></div>`;
+      } else {
+        paymentHtml += `<p><strong>สถานะ:</strong> <span class="badge badge-warning">ยังไม่ชำระ</span></p>`;
+        if (userRole === 'staff') {
+          paymentHtml += `
+            <div class="mt-3 text-center">
+              <a href="/payment?visit_id=${visit.id}" class="btn btn-success">
+                <i class="fas fa-dollar-sign"></i> ดำเนินการชำระเงิน
+              </a>
+            </div>
+          `;
         }
-        // -- PAYMENT SECTION --
-        const userRole = document.body.dataset.userRole;
-        const paymentDetails = JSON.parse(visit.payment_details_json || 'null');
-
-        let paymentHtml = '<div class="detail-section"><h5><i class="fas fa-file-invoice-dollar"></i> การชำระเงิน</h5>';
-        if (visit.payment_status === 'ชำระแล้ว' && paymentDetails) {
-             paymentHtml += `
-                <p>
-                    <strong>สถานะ:</strong> <span class="badge badge-success">ชำระแล้ว</span><br>
-                    <strong>จำนวน:</strong> ${parseFloat(paymentDetails.amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท<br>
-                    <strong>วันที่ชำระ:</strong> ${paymentDetails.date}
-                </p>
-            `;
-        } else {
-            paymentHtml += `<p><strong>สถานะ:</strong> <span class="badge badge-warning">ยังไม่ชำระ</span></p>`;
-            if (userRole === 'staff') {
-                 paymentHtml += `
-                    <div class="mt-3 text-center">
-                        <a href="/payment?visit_id=${visit.id}" class="btn btn-success">
-                            <i class="fas fa-dollar-sign"></i> ดำเนินการชำระเงิน
-                        </a>
-                    </div>
-                `;
-            }
-        }
-        paymentHtml += '</div>';
-        contentHtml += paymentHtml;
-        detailContent.innerHTML = contentHtml;
+      }
+      paymentHtml += '</div>';
+      detailContent.innerHTML = contentHtml + paymentHtml;
     }
 
     function filterItems() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-        let firstVisible = null;
+      const searchTerm = (searchInput.value || '').toLowerCase();
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+      let firstVisible = null;
 
-        visitItems.forEach(item => {
-            const searchText = item.dataset.searchText || '';
-            const visitDate = item.dataset.visitDateIso || '';
-            const isMatch = (!searchTerm || searchText.includes(searchTerm)) && 
-                              (!startDate || visitDate >= startDate) && 
-                              (!endDate || visitDate <= endDate);
-            item.style.display = isMatch ? 'grid' : 'none';
-            if (isMatch && !firstVisible) firstVisible = item;
-        });
-        
-        let currentActive = document.querySelector('.visit-item.active');
-        if (!currentActive || currentActive.style.display === 'none') {
-            visitItems.forEach(i => i.classList.remove('active'));
-            if (firstVisible) {
-                firstVisible.classList.add('active');
-                updateDetails(firstVisible.dataset.visitId);
-            } else {
-                 updateDetails(null);
-            }
+      const items = Array.from(visitListBody.querySelectorAll('.visit-item'));
+      items.forEach(item => {
+        const searchText = item.dataset.searchText || '';
+        const visitDate = item.dataset.visitDateIso || '';
+        const isMatch = (!searchTerm || searchText.includes(searchTerm)) &&
+                        (!startDate || visitDate >= startDate) &&
+                        (!endDate   || visitDate <= endDate);
+        item.style.display = isMatch ? 'grid' : 'none';
+        if (isMatch && !firstVisible) firstVisible = item;
+      });
+
+      const currentActive = document.querySelector('.visit-item.active');
+      if (!currentActive || currentActive.style.display === 'none') {
+        items.forEach(i => i.classList.remove('active'));
+        if (firstVisible) {
+          firstVisible.classList.add('active');
+          updateDetails(firstVisible.dataset.visitId);
+        } else {
+          updateDetails(null);
         }
+      }
     }
 
-    visitListBody.addEventListener('click', function(e) {
-        const item = e.target.closest('.visit-item');
-        if (item) {
-            e.preventDefault();
-            if (item.classList.contains('active')) return;
-            visitItems.forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-            updateDetails(item.dataset.visitId);
-        }
+    // เลือกจากรายการซ้าย
+    document.getElementById('visit-list-body').addEventListener('click', function(e) {
+      const item = e.target.closest('.visit-item');
+      if (!item) return;
+      e.preventDefault();
+      if (item.classList.contains('active')) return;
+      this.querySelectorAll('.visit-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      updateDetails(item.dataset.visitId);
     });
     
     [searchInput, startDateInput, endDateInput].forEach(input => {
       input.addEventListener('input', () => requestAnimationFrame(filterItems));
     });
 
-    function initialize() {
-      const initialActive = visitItems.find(item => item.classList.contains('active'));
-      if (initialActive) updateDetails(initialActive.dataset.visitId);
-      else if (visitItems.length > 0) {
-          visitItems[0].classList.add('active');
-          updateDetails(visitItems[0].dataset.visitId);
-      } else updateDetails(null);
+    // init
+    const initialActive = document.querySelector('.visit-item.active') || document.querySelector('.visit-item');
+    if (initialActive) {
+      initialActive.classList.add('active');
+      updateDetails(initialActive.dataset.visitId);
+    } else {
+      updateDetails(null);
     }
-
-    initialize();
-});
-</script>
+  });
+  </script>
 </body>
 </html>
