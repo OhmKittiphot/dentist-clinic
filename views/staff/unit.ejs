@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/public/css/unit.css">
+  <title>ระบบจัดการยูนิต</title>
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials/navbar') %>
+
+    <main class="main">
+      <section class="card">
+        <div class="bar">
+          <h1 class="title">จัดการ Units (ห้องทำฟัน)</h1>
+          <div class="row">
+            <button id="addBtn" class="btn primary" type="button">+ เพิ่ม Unit</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px">รหัส</th>
+                <th>ชื่อ</th>
+                <th style="width:140px">สถานะ</th>
+                <th style="width:260px">การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <!-- ข้อมูลดูจาก script -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/public/js/unit.js" nonce="<%= nonce %>"></script>
+</body>
+</html>

@@ -316,5 +316,108 @@ router.post('/assign-queue', allowRoles('staff'), (req, res, next) => {
   });
 });
 
+router.get('/unit', allowRoles('staff'), (req, res) => {
+  res.render('staff/unit', { 
+    title: 'จัดการห้องทำฟัน',
+    nonce: res.locals.nonce,
+    userRole: req.user.role 
+  });
+});
+
+// API Routes for Units
+router.get('/api/units', allowRoles('staff'), async (req, res) => {
+  try {
+    const units = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM dental_units ORDER BY id', (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    res.json(units);
+  } catch (error) {
+    console.error('Error fetching units:', error);
+    res.status(500).json({ error: 'ไม่สามารถโหลดข้อมูลหน่วยทันตกรรมได้' });
+  }
+});
+
+router.post('/api/units', async (req, res) => {
+  try {
+    const { unit_name, status = 'ACTIVE' } = req.body;
+    
+    if (!unit_name) {
+      return res.status(400).json({ error: 'กรุณากรอกชื่อหน่วยทันตกรรม' });
+    }
+
+    const result = await db.run(
+      'INSERT INTO dental_units (unit_name, status) VALUES (?, ?)',
+      [unit_name, status]
+    );
+
+    res.json({ 
+      id: result.lastID,
+      message: 'เพิ่มหน่วยทันตกรรมเรียบร้อยแล้ว'
+    });
+  } catch (error) {
+    console.error('Error creating unit:', error);
+    res.status(500).json({ error: 'ไม่สามารถเพิ่มหน่วยทันตกรรมได้' });
+  }
+});
+
+router.put('/api/units/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { unit_name, status } = req.body;
+
+    let query = 'UPDATE dental_units SET ';
+    let params = [];
+
+    if (unit_name !== undefined) {
+      query += 'unit_name = ?';
+      params.push(unit_name);
+    }
+
+    if (status !== undefined) {
+      if (unit_name !== undefined) query += ', ';
+      query += 'status = ?';
+      params.push(status);
+    }
+
+    query += ' WHERE id = ?';
+    params.push(id);
+
+    await db.run(query, params);
+
+    res.json({ message: 'อัพเดทข้อมูลเรียบร้อยแล้ว' });
+  } catch (error) {
+    console.error('Error updating unit:', error);
+    res.status(500).json({ error: 'ไม่สามารถอัพเดทข้อมูลหน่วยทันตกรรมได้' });
+  }
+});
+
+router.delete('/api/units/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // ตรวจสอบว่าหน่วยทันตกรรมถูกใช้งานในการนัดหมายหรือไม่
+    const appointments = await db.get(
+      'SELECT COUNT(*) as count FROM appointments WHERE unit_id = ?',
+      [id]
+    );
+
+    if (appointments.count > 0) {
+      return res.status(400).json({ 
+        error: 'ไม่สามารถลบหน่วยทันตกรรมนี้ได้ เนื่องจากมีการใช้งานในการนัดหมายแล้ว' 
+      });
+    }
+
+    await db.run('DELETE FROM dental_units WHERE id = ?', [id]);
+
+    res.json({ message: 'ลบหน่วยทันตกรรมเรียบร้อยแล้ว' });
+  } catch (error) {
+    console.error('Error deleting unit:', error);
+    res.status(500).json({ error: 'ไม่สามารถลบหน่วยทันตกรรมได้' });
+  }
+});
+
 
 module.exports = router;
