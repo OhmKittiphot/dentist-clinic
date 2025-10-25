@@ -258,3 +258,5 @@ router.post('/treatment', allowRoles('dentist'), upload.array('xrays'), (req, re
 });
 
 module.exports = router;
+
+// ADD APPOINTMENT

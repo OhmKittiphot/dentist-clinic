@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/public/css/queue.css" />
+    <title>รายการการชำระเงิน</title>
+</head>
+
+<body>
+  <div class="app">
+    <%- include('../partials/navbar') %>
+
+      <main class="main">
+        <div class="queue-app-wrapper">
+          <header>
+            <div class="title">จัดคิวผู้ป่วย (Queue Assign)</div>
+            <div class="toolbar">
+              <label>วันที่</label>
+              <input id="date" type="date" />
+              <button class="chip" id="btnToday">วันนี้</button>
+              <button class="chip" id="btnTomorrow">พรุ่งนี้</button>
+              <div class="seg">
+                <button id="viewAssign" class="active">Assign</button>
+                <button id="viewUnit">Board · Unit</button>
+                <button id="viewDent">Board · Dentist</button>
+                <button id="viewAgenda">Agenda</button>
+              </div>
+            </div>
+          </header>
+
+          <div class="queue-grid-container">
+            <section class="card">
+              <h3>รายการจาก CustomerTime</h3>
+              <input type="text" id="qSearch" placeholder="ค้นหาชื่อผู้ป่วย/บริการ" />
+              <select id="qStatusFilter">
+                <option value="all">ทุกสถานะ</option>
+                <option value="new">รอจัดคิว</option>
+                <option value="scheduled">จัดคิวแล้ว</option>
+              </select>
+              <div id="queueEmpty">— ไม่มีคำขอในวันนี้ —</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>เวลา</th>
+                    <th>ผู้ป่วย</th>
+                    <th>บริการ</th>
+                    <th>สถานะ</th>
+                    <th>เลือก</th>
+                  </tr>
+                </thead>
+                <tbody id="queueBody"></tbody>
+              </table>
+            </section>
+
+            <section class="card" id="panelAssign">
+              <h3>Assign แบบฟอร์ม</h3>
+              <div id="selLabel">—</div>
+              <select id="denSel"></select>
+              <select id="unitSel"></select>
+              <div id="slotSuggest"></div>
+              <button id="btnAssign" disabled>ยืนยันการจัดคิว</button>
+            </section>
+
+            <section class="card" id="panelUnit" style="display:none">
+              <h3>Board ตามห้อง (Unit)</h3>
+              <div id="boardUnit"></div>
+            </section>
+
+            <section class="card" id="panelDent" style="display:none">
+              <h3>Board ตามทันตแพทย์</h3>
+              <div id="boardDent"></div>
+            </section>
+
+            <section class="card" id="panelAgenda" style="display:none">
+              <h3>เคสวันนี้</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>เวลา</th>
+                    <th>Unit</th>
+                    <th>ผู้ป่วย</th>
+                    <th>บริการ</th>
+                    <th>ทันตแพทย์</th>
+                  </tr>
+                </thead>
+                <tbody id="agendaBody"></tbody>
+              </table>
+            </section>
+          </div>
+        </div>
+      </main>
+  </div>
+
+  <script src="/js/queue.js" nonce="<%= nonce %>"></script>
+</body>
+
+</html>

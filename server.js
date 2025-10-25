@@ -57,6 +57,7 @@ const authRouter = require('./routes/auth');
 const dentRouter = require('./routes/dentist');
 const staffRouter = require('./routes/staff');
 const pantRouter = require('./routes/patient');
+
 // --- Public & Debug Routes ---
 
 // Root route should always go to login
@@ -85,11 +86,15 @@ app.use('/dentist', authenticateToken, dentRouter);
 app.use('/staff', authenticateToken, staffRouter);
 app.use('/patient', authenticateToken, pantRouter);
 
+
+
 app.use((req, res) => res.status(404).send('Not Found'));
 app.use((err, req, res, next) => { 
   console.error(err.stack); 
   res.status(500).send('Server Error'); 
 });
+
+
 
 // --- Server Start ---
 app.listen(PORT, () => console.log(`Server running: http://localhost:${PORT}`));

@@ -215,4 +215,106 @@ router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
   });
 });
 
+// ---------- Master Data ----------
+router.get('/queue-master-data', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const dentists = await new Promise((resolve, reject) => {
+      db.all(
+        "SELECT id, pre_name || first_name || ' ' || last_name AS name FROM dentists ORDER BY first_name",
+        (err, rows) => (err ? reject(err) : resolve(rows))
+      );
+    });
+
+    const units = await new Promise((resolve, reject) => {
+      db.all(
+        "SELECT id, unit_name AS name FROM dental_units WHERE status='ACTIVE' ORDER BY unit_name",
+        (err, rows) => (err ? reject(err) : resolve(rows))
+      );
+    });
+
+    res.json({ dentists, units });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Queue Data ----------
+router.get('/queue-data', allowRoles('staff'), async (req, res, next) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ error: 'Missing date' });
+
+  try {
+    const queueItems = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT r.id, r.requested_date AS date, r.requested_time_slot AS time,
+               r.patient_id, r.service_description, r.notes, r.status,
+               p.first_name, p.last_name
+        FROM appointment_requests r
+        JOIN patients p ON r.patient_id = p.id
+        WHERE r.requested_date = ? AND r.status = 'NEW'
+      `;
+      db.all(sql, [date], (err, rows) => (err ? reject(err) : resolve(rows)));
+    });
+
+    const appointments = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT a.id, strftime('%Y-%m-%d', a.start_time) AS date,
+               a.dentist_id, a.unit_id,
+               strftime('%H:%M', a.start_time) || '-' || strftime('%H:%M', a.end_time) AS slot,
+               a.patient_id, a.notes AS service, a.from_request_id,
+               p.first_name, p.last_name,
+               d.pre_name AS doc_pre_name, d.first_name AS doc_first_name, d.last_name AS doc_last_name,
+               u.unit_name
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN dentists d ON a.dentist_id = d.id
+        JOIN dental_units u ON a.unit_id = u.id
+        WHERE date(a.start_time) = ? AND a.status = 'SCHEDULED'
+      `;
+      db.all(sql, [date], (err, rows) => (err ? reject(err) : resolve(rows)));
+    });
+
+    res.json({ queueItems, appointments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Assign ----------
+router.post('/assign-queue', allowRoles('staff'), (req, res, next) => {
+  const { requestId, patientId, dentistId, unitId, date, slot, serviceDescription } = req.body;
+  const [startTimeStr, endTimeStr] = slot.split('-');
+  const start_time = `${date}T${startTimeStr}:00`;
+  const end_time = `${date}T${endTimeStr}:00`;
+
+  db.serialize(() => {
+    db.run('BEGIN;');
+    db.run(
+      `INSERT INTO appointments
+        (patient_id, dentist_id, unit_id, start_time, end_time, status, notes, from_request_id)
+       VALUES (?, ?, ?, ?, ?, 'SCHEDULED', ?, ?)`,
+      [patientId, dentistId, unitId, start_time, end_time, serviceDescription, requestId],
+      function (err) {
+        if (err) {
+          db.run('ROLLBACK;');
+          return next(err);
+        }
+        db.run(
+          "UPDATE appointment_requests SET status='ASSIGNED' WHERE id=?",
+          [requestId],
+          (err2) => {
+            if (err2) {
+              db.run('ROLLBACK;');
+              return next(err2);
+            }
+            db.run('COMMIT;');
+            res.json({ success: true, appointmentId: this.lastID });
+          }
+        );
+      }
+    );
+  });
+});
+
+
 module.exports = router;

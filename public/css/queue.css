@@ -1,0 +1,26 @@
+:root {
+  --bg: #f2f4f7; --panel: #fff; --line: #e5e7eb; --brand: #4f74a1; --success: #22c55e;
+}
+
+body, input, select, button { font-family: sans-serif; }
+
+.queue-app-wrapper { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
+
+header { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+
+.table { width: 100%; border-collapse: collapse; }
+
+th, td { padding: 8px; border-bottom: 1px solid var(--line); }
+
+.pill.ok { background: #e7f8ee; color: #0f5132; padding: 2px 6px; border-radius: 8px; }
+
+.pill { background: #eef6ff; color: #1e4f86; padding: 2px 6px; border-radius: 8px; }
+
+button { cursor: pointer; }
+
+#slotSuggest { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.drop { border: 1px solid #dbe6f4; border-radius: 6px; padding: 4px; margin: 2px; min-width: 80px; text-align: center; }
+.drop.booked { opacity: 0.6; text-decoration: line-through; cursor: not-allowed; }
