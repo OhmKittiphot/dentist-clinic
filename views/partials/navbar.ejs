@@ -1,35 +1,31 @@
 <aside class="sidebar">
   <div class="brand">DENTALCARE</div>
 
- 
-
   <!-- 🔹 Navigation Menu -->
   <nav class="nav">
     <% if (userRole === 'dentist') { %>
       <h4 class="nav-group-title">Dentist Menu</h4>
       <ul class="nav-group">
-        <li class="nav-item"><a class="nav-link" href="/dentist/patients">เวชระเบียนผู้ป่วย</a></li>
-        <li class="nav-item"><a class="nav-link" href="/dentist/schedule">นัดหมาย [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'patients' ? 'active' : '' %>" href="/dentist/patients">เวชระเบียนผู้ป่วย</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'schedule' ? 'active' : '' %>" href="/dentist/schedule">นัดหมาย [ยังไม่เสร็จ]</a></li>
       </ul>
     <% } %>
 
     <% if (userRole === 'staff') { %>
       <h4 class="nav-group-title">Staff Menu</h4>
       <ul class="nav-group">
-        <li class="nav-item"><a class="nav-link" href="/staff/patients">เวชระเบียนผู้ป่วย</a></li>
-        <li class="nav-item"><a class="nav-link" href="/staff/schedule">จัดการตารางนัด [ยังไม่เสร็จ]</a></li>
-        <li class="nav-item"><a class="nav-link" href="/staff/queue">จัดการคิว</a></li>
-        <li class="nav-item"><a class="nav-link" href="/staff/unit">จัดการยูนิต</a></li>
-        <li class="nav-item"><a class="nav-link" href="/staff/payments">ชำระเงิน [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'patients' ? 'active' : '' %>" href="/staff/patients">เวชระเบียนผู้ป่วย</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'schedule' ? 'active' : '' %>" href="/staff/schedule">จัดการตารางนัด [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'payments' ? 'active' : '' %>" href="/staff/payments">ชำระเงิน [ยังไม่เสร็จ]</a></li>
       </ul>
     <% } %>
 
     <% if (userRole === 'patient') { %>
-      <h4 class="nav-group-title">Patient Menu</h4>
+      <h4 class="nav-group-title">เมนู</h4>
       <ul class="nav-group">
-        <li class="nav-item"><a class="nav-link" href="/patient/records">เวชระเบียนของฉัน</a></li>
-        <li class="nav-item"><a class="nav-link" href="/patient/appointments">นัดหมายของฉัน [ยังไม่เสร็จ]</a></li>
-        <li class="nav-item"><a class="nav-link" href="/patient/payments">การชำระเงิน [ยังไม่เสร็จ]</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'dashboard' ? 'active' : '' %>" href="/patient/dashboard">แดชบอร์ด</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'appointments' ? 'active' : '' %>" href="/patient/appointments">จัดการนัด</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'payments' ? 'active' : '' %>" href="/patient/payments">รายการชำระเงิน</a></li>
       </ul>
     <% } %>
   </nav>

@@ -1,0 +1,30 @@
+/* patient.css */
+
+.app {
+    padding: 0;
+}
+
+.main-content {
+    padding: 28px;
+}
+
+/* Status badge (นำดีไซน์มาจาก staff-payments.css) */
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  text-transform: uppercase;
+  display: inline-block;
+}
+.status-paid {
+  background-color: #e2f5ea;
+  color: #34a853;
+  border: 1px solid #bfe9ce;
+}
+.status-pending {
+  background-color: #feefc3;
+  color: #fbbc05;
+  border: 1px solid #f6df8a;
+}

@@ -18,15 +18,23 @@ body {
   color: var(--ink);
 }
 
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+  padding: 28px;
+}
+
+.sidebar {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+
 a {
   color: var(--brand);
   text-decoration: none;
-}
-
-.container {
-  max-width: 980px;
-  margin: 28px auto;
-  padding: 0 16px;
 }
 
 h1 {
@@ -157,4 +165,12 @@ h1 {
 
 .proc-row input {
   height: 36px;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
 }

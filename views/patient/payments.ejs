@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <%- include('../partials/head') %>
+  <title>รายการชำระเงิน</title>
+
+  <link rel="stylesheet" href="/public/css/main.css">
+  <link rel="stylesheet" href="/public/css/patient.css">
+  <!-- ใช้สไตล์ badge แบบเดียวกับ staff -->
+  <link rel="stylesheet" href="/public/css/staff-payments.css" />
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'payments' }) %>
+
+    <main class="main-content">
+      <div class="container">
+        <h1 class="mb-4">ประวัติการชำระเงิน</h1>
+
+        <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+          <div class="alert alert-success" style="margin-bottom: 16px;">
+            <%= successMessage %>
+          </div>
+        <% } %>
+
+        <!-- 🔎 Toolbar กรองวันที่ -->
+        <form class="payments-toolbar" method="GET" action="">
+          <div class="toolbar-row">
+            <div class="toolbar-field">
+              <label>ตั้งแต่วันที่</label>
+              <input type="date" name="date_from" value="<%= date_from || '' %>">
+            </div>
+
+            <div class="toolbar-field">
+              <label>ถึงวันที่</label>
+              <input type="date" name="date_to" value="<%= date_to || '' %>">
+            </div>
+
+            <div class="toolbar-actions">
+              <button type="submit" class="btn primary">ค้นหา</button>
+              <a href="/patient/payments" class="btn ghost">ล้างค่าค้นหา</a>
+            </div>
+          </div>
+        </form>
+
+        <!-- ตารางจ่ายเงิน -->
+        <div class="payments-table">
+          <div class="payments-thead">
+            <div>รหัสการชำระเงิน</div>
+            <div>จำนวนเงิน (฿)</div>
+            <div>วัน-เวลาที่ชำระ</div>
+            <div>สถานะ</div>
+            <div>การดำเนินการ</div>
+          </div>
+
+          <% if (payments && payments.length > 0) { %>
+            <% payments.forEach(p => { %>
+              <div class="payments-trow">
+                <div><%= p.id %></div>
+
+                <div>
+                  <%= typeof p.amount === 'number'
+                        ? p.amount.toFixed(2)
+                        : (p.amount ? Number(p.amount).toFixed(2) : '-') %>
+                </div>
+
+                <div>
+                  <%= p.payment_date
+                        ? new Date(p.payment_date).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+                        : '-' %>
+                </div>
+
+                <div>
+                  <% if (p.status === 'paid') { %>
+                    <span class="status-badge status-paid">ชำระแล้ว</span>
+                  <% } else { %>
+                    <span class="status-badge status-pending">รอชำระ</span>
+                  <% } %>
+                </div>
+
+                <div>
+                  <% if (p.status === 'pending') { %>
+                    <form method="POST"
+                          action="/patient/payments/<%= p.id %>/pay?<%=
+                            [
+                              date_from ? 'date_from=' + encodeURIComponent(date_from) : '',
+                              date_to ? 'date_to=' + encodeURIComponent(date_to) : ''
+                            ].filter(Boolean).join('&')
+                          %>"
+                          style="display:inline;">
+                      <button type="submit" class="btn success">ชำระเงิน</button>
+                    </form>
+                  <% } else { %>
+                    <span class="muted">-</span>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="empty-payments">ไม่พบประวัติการชำระเงิน</div>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

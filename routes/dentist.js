@@ -57,7 +57,8 @@ router.get('/patients', allowRoles('dentist'), (req, res, next) => {
                 searchQuery,
                 currentPage,
                 totalPages,
-                successMessage
+                successMessage,
+                page: 'patients'
             });
         });
     });
@@ -141,7 +142,8 @@ router.get('/patients/:id/history', allowRoles('dentist'), async (req, res, next
         res.render('dentists/history', {
             patient,
             visits,
-            userRole: req.user.role
+            userRole: req.user.role,
+            page: 'patients'
         });
     } catch (err) {
         console.error(err);
@@ -177,7 +179,8 @@ router.get('/new/:patient_id', allowRoles('dentist'), (req, res, next) => {
                     userRole: req.user.role,
                     procedure_codes,
                     doctor_name: doctorName,
-                    nonce: res.locals.nonce
+                    nonce: res.locals.nonce,
+                    page: 'patients'
                 });
             });
         });
@@ -258,5 +261,3 @@ router.post('/treatment', allowRoles('dentist'), upload.array('xrays'), (req, re
 });
 
 module.exports = router;
-
-// ADD APPOINTMENT

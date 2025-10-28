@@ -1,30 +1,41 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="/public/css/styles.css"/>
+    <%- include('../partials/head') %>
+    <title>แดชบอร์ดผู้ป่วย</title>
+    <link rel="stylesheet" href="/public/css/main.css">
+    <link rel="stylesheet" href="/public/css/patient.css">
 </head>
 <body>
-<main>
-  <section class="wrap">
-    <div class="brand">
-      <div class="logo"><img src="/public/css/logo.png" alt="Dentalcare Logo"></div>
-      <div>
-        <h1>หน้าสำหรับผู้ป่วย</h1>
-        <p class="sub">ระบบจัดการคลินิกทันตกรรม</p>
-      </div>
-    </div>
+    <div class="app">
+        <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'dashboard' }) %>
+        <main class="main-content">
+            <h1>ยินดีต้อนรับสู่แดชบอร์ดของคุณ</h1>
 
-    <div class="card">
-      <h2>ยินดีต้อนรับ!</h2>
-      <p>นี่คือหน้าแดชบอร์ดสำหรับผู้ป่วย คุณสามารถดูข้อมูลการนัดหมายและข้อมูลส่วนตัวของคุณได้ที่นี่ (ในอนาคต)</p>
-      <div class="actions">
-        <a class="primary" href="/logout">ออกจากระบบ</a>
-      </div>
+            <div class="card">
+                <h2>การนัดหมายครั้งถัดไป</h2>
+                <% if (appointment) { %>
+                    <p><strong>วันที่:</strong> <%= new Date(appointment.visit_date).toLocaleDateString('th-TH') %></p>
+                    <p><strong>ทันตแพทย์:</strong> <%= appointment.doctor_name %></p>
+                    <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
+                <% } else { %>
+                    <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
+                    <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
+                <% } %>
+            </div>
+
+            <div class="card">
+                <h2>การชำระเงิน</h2>
+                <% if (payment) { %>
+                    <p><strong>ยอดที่ต้องชำระ:</strong> <%= payment.amount %> บาท</p>
+                    <p><strong>สถานะ:</strong> <%= payment.status === 'pending' ? 'ยังไม่ชำระ' : 'ชำระแล้ว' %></p>
+                    <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
+                <% } else { %>
+                    <p>คุณไม่มีบิลที่ต้องชำระ</p>
+                    <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
+                <% } %>
+            </div>
+        </main>
     </div>
-  </section>
-</main>
 </body>
 </html>
