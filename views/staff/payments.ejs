@@ -9,11 +9,12 @@
 <body>
   <div class="app">
     <%- include('../partials/navbar') %>
+
     <main class="main-content">
       <div class="container">
-        <h1 class="mb-4">รายการการชำระเงินทั้งหมด</h1>
+        <h1 class="page-title">รายการการชำระเงินทั้งหมด</h1>
 
-        <!-- 🔎 Toolbar ค้นหา/กรอง -->
+        <!-- Filter -->
         <form class="payments-toolbar" method="GET" action="">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value="<%= pageSize %>" />
@@ -21,8 +22,7 @@
           <div class="toolbar-row">
             <div class="toolbar-field">
               <label>ค้นหาชื่อผู้ป่วย</label>
-              <input type="text" name="q" placeholder="พิมพ์ชื่อ-นามสกุล"
-                     value="<%= q || '' %>">
+              <input type="text" name="q" placeholder="พิมพ์ชื่อ-นามสกุล" value="<%= q || '' %>">
             </div>
 
             <div class="toolbar-field">
@@ -35,14 +35,24 @@
               <input type="date" name="date_to" value="<%= date_to || '' %>">
             </div>
 
+            <div class="toolbar-field">
+              <label>เรียงลำดับ</label>
+              <select name="sort">
+                <option value="latest"       <%= (sort||'latest')==='latest' ? 'selected' : '' %>>ล่าสุดก่อน</option>
+                <option value="unpaid_first" <%= sort==='unpaid_first' ? 'selected' : '' %>>ยังไม่ชำระก่อน</option>
+                <option value="amount_desc"  <%= sort==='amount_desc' ? 'selected' : '' %>>ยอดชำระ มาก→น้อย</option>
+                <option value="amount_asc"   <%= sort==='amount_asc' ? 'selected' : '' %>>ยอดชำระ น้อย→มาก</option>
+              </select>
+            </div>
+
             <div class="toolbar-actions">
               <button type="submit" class="btn primary">ค้นหา</button>
-              <a href="/staff/payments?page=1&pageSize=<%= pageSize %>" class="btn ghost">ล้างค่าค้นหา</a>
+              <a class="btn ghost" href="/staff/payments?page=1&pageSize=<%= pageSize %>">ล้างค่าค้นหา</a>
             </div>
           </div>
         </form>
 
-        <!-- ตาราง (ไม่มี Visit/Staff ID) -->
+        <!-- Table -->
         <div class="payments-table">
           <div class="payments-thead">
             <div>ID</div>
@@ -69,13 +79,15 @@
                 <div>
                   <% if (p.status === 'paid') { %>
                     <span class="status-badge status-paid">ชำระแล้ว</span>
+                  <% } else if (p.status === 'void') { %>
+                    <span class="status-badge status-void">ยกเลิก</span>
                   <% } else { %>
                     <span class="status-badge status-pending">รอชำระ</span>
                   <% } %>
                 </div>
                 <div>
                   <% if (p.status === 'pending') { %>
-                    <form action="/staff/payments/<%= p.id %>/complete?page=<%= page %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>" method="POST" style="display:inline;">
+                    <form action="/staff/payments/<%= p.id %>/complete?page=<%= page %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>&sort=<%= sort || 'latest' %>" method="POST" style="display:inline;">
                       <button type="submit" class="btn success">ยืนยันการชำระ</button>
                     </form>
                   <% } else { %>
@@ -87,57 +99,49 @@
           <% } %>
         </div>
 
-        <!-- Pagination -->
-        <nav class="pager" aria-label="pagination">
-          <div class="pager-left">
-            <% if (page > 1) { %>
-              <a class="pager-btn" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">ก่อนหน้า</a>
-            <% } else { %>
-              <span class="pager-btn disabled">ก่อนหน้า</span>
-            <% } %>
-          </div>
+        <!-- Pagination (แนวเดียวกัน) -->
+        <%
+          const makeQS = (p) => `page=${p}&pageSize=${pageSize}&q=${encodeURIComponent(q||'')}&date_from=${date_from||''}&date_to=${date_to||''}&sort=${sort||'latest'}`;
+          const windowSize = 7;
+          const half = Math.floor(windowSize/2);
+          let start = Math.max(1, page - half);
+          let end = Math.min(totalPages, start + windowSize - 1);
+          start = Math.max(1, Math.min(start, end - windowSize + 1));
+        %>
 
-          <div class="pager-pages">
-            <% 
-              const windowSize = 2;
-              const startPage = Math.max(1, page - windowSize);
-              const endPage = Math.min(totalPages, page + windowSize);
-            %>
+        <nav class="pager-wrap" aria-label="Pagination">
+          <a class="pager-btn <%= page<=1?'disabled':'' %>" href="<%= page>1?`?${makeQS(page-1)}`:'#' %>">ก่อนหน้า</a>
 
-            <% if (startPage > 1) { %>
-              <a class="pager-num" href="?page=1&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">1</a>
-              <% if (startPage > 2) { %><span class="pager-ellipsis">…</span><% } %>
+          <div class="pager-line">
+            <% if (start > 1) { %>
+              <a class="pager-num" href="?<%= makeQS(1) %>">1</a>
+              <% if (start > 2) { %><span class="pager-ellipsis">…</span><% } %>
             <% } %>
 
-            <% for (let i = startPage; i <= endPage; i++) { %>
-              <% if (i === page) { %>
+            <% for (let i=start; i<=end; i++) { %>
+              <% if (i===page) { %>
                 <span class="pager-num active"><%= i %></span>
               <% } else { %>
-                <a class="pager-num" href="?page=<%= i %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>"><%= i %></a>
+                <a class="pager-num" href="?<%= makeQS(i) %>"><%= i %></a>
               <% } %>
             <% } %>
 
-            <% if (endPage < totalPages) { %>
-              <% if (endPage < totalPages - 1) { %><span class="pager-ellipsis">…</span><% } %>
-              <a class="pager-num" href="?page=<%= totalPages %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>"><%= totalPages %></a>
+            <% if (end < totalPages) { %>
+              <% if (end < totalPages-1) { %><span class="pager-ellipsis">…</span><% } %>
+              <a class="pager-num" href="?<%= makeQS(totalPages) %>"><%= totalPages %></a>
             <% } %>
           </div>
 
-          <div class="pager-right">
-            <% if (page < totalPages) { %>
-              <a class="pager-btn" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %>&q=<%- encodeURIComponent(q || '') %>&date_from=<%= date_from || '' %>&date_to=<%= date_to || '' %>">ถัดไป</a>
-            <% } else { %>
-              <span class="pager-btn disabled">ถัดไป</span>
-            <% } %>
-          </div>
+          <a class="pager-btn <%= page>=totalPages?'disabled':'' %>" href="<%= page<totalPages?`?${makeQS(page+1)}`:'#' %>">ถัดไป</a>
         </nav>
 
-        <!-- Page size selector -->
+        <!-- Page size -->
         <form class="page-size-form" method="GET">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="q" value="<%= q || '' %>" />
           <input type="hidden" name="date_from" value="<%= date_from || '' %>" />
           <input type="hidden" name="date_to" value="<%= date_to || '' %>" />
+          <input type="hidden" name="sort" value="<%= sort || 'latest' %>" />
           <label>แสดงต่อหน้า:</label>
           <select name="pageSize" onchange="this.form.submit()">
             <option value="10" <%= pageSize==10 ? 'selected' : '' %>>10</option>
@@ -150,7 +154,5 @@
       </div>
     </main>
   </div>
-
-  <script nonce="<%= nonce %>"></script>
 </body>
 </html>

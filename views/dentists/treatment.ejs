@@ -1,495 +1,193 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกการรักษา - <%= patient.first_name %>
-    </title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/public/css/main.css">
-    <link rel="stylesheet" href="/public/css/visit-form.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>บันทึกการรักษา - <%= patient.first_name %></title>
+
+  <!-- CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/public/css/main.css"/>
+  <link rel="stylesheet" href="/public/css/visit-form.css"/>
 </head>
 
 <body>
-    <div class="container my-4">
-        <form action="/dentist/treatment" method="POST" enctype="multipart/form-data" id="visit-form">
-            <input type="hidden" name="patient_id" value="<%= patient.id %>">
-            <input type="hidden" name="procedures" id="procedures-input">
-            <input type="file" id="xray-files-input" name="xrays" multiple style="display: none;">
+  <div class="container my-4">
+    <form action="/dentist/treatment" method="POST" enctype="multipart/form-data" id="visit-form">
+      <input type="hidden" name="patient_id" value="<%= patient.id %>"/>
+      <input type="hidden" name="procedures" id="procedures-input"/>
+      <input type="file" id="xray-files-input" name="xrays" multiple style="display:none;"/>
 
-            <div class="row">
-                <!-- Left Column -->
-                <div class="col-lg-8">
+      <div class="row">
+        <!-- Left -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header">ข้อมูลผู้ป่วยและการเข้าพบ</div>
+            <div class="card-body">
+              <div class="patient-info-display">
+                <p><strong>ชื่อ-นามสกุล:</strong> <%= patient.first_name %> <%= patient.last_name %></p>
+                <p><strong>อายุ:</strong> <%= patient.age %></p>
+                <p><strong>เพศ:</strong> <%= patient.gender %></p>
+                <p><strong>CN:</strong> <%= patient.clinic_number %></p>
+              </div>
+              <a href="/dentist/patients/<%= patient.id %>/history" class="btn btn-sm btn-outline-primary mt-2">ดูประวัติการรักษา</a>
+              <hr class="my-4"/>
 
-                    <!-- Patient & Visit Info Card -->
-                    <div class="card">
-                        <div class="card-header">ข้อมูลผู้ป่วยและการเข้าพบ</div>
-                        <div class="card-body">
-                            <div class="patient-info-display">
-                                <p><strong>ชื่อ-นามสกุล:</strong>
-                                    <%= patient.first_name %>
-                                        <%= patient.last_name %>
-                                </p>
-                                <p><strong>อายุ:</strong>
-                                    <%= patient.age %>
-                                </p>
-                                <p><strong>เพศ:</strong>
-                                    <%= patient.gender %>
-                                </p>
-                                <p><strong>CN:</strong>
-                                    <%= patient.clinic_number %>
-                                </p>
-                            </div>
-                            <a href="/dentist/patients/<%= patient.id %>/history"
-                                class="btn btn-sm btn-outline-primary mt-2">ดูประวัติการรักษา</a>
-                            <hr class="my-4">
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label for="visit_date">วันที่</label>
-                                    <input type="datetime-local" class="form-control" id="visit_date" name="visit_date"
-                                        required>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label for="doctor_name">แพทย์</label>
-                                    <input type="text" class="form-control" id="doctor_name" name="doctor_name"
-                                        value="<%= doctor_name %>" readonly>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label>Blood Pressure (SYS/DIA)</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" name="bp_sys" placeholder="Systolic">
-                                        <input type="number" class="form-control" name="bp_dia" placeholder="Diastolic">
-                                    </div>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label for="pulse_rate">Pulse Rate</label>
-                                    <input type="number" class="form-control" id="pulse_rate" name="pulse_rate"
-                                        placeholder="bpm">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="clinical_notes">Clinical Notes</label>
-                                <textarea class="form-control" name="clinical_notes" id="clinical_notes" rows="3"
-                                    placeholder="บันทึกรายละเอียดอาการ / ข้อวินิจฉัย / การตรวจ"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Procedures & Tooth Chart Card -->
-                    <div class="card">
-                        <div class="card-header">หัตถการและการรักษา</div>
-                        <div class="card-body">
-                            <div class="procedure-quick-select">
-                                <% procedure_codes.forEach(code=> { %>
-                                    <button type="button" class="quick-add-proc" data-code="<%= code.code %>"
-                                        data-desc="<%= code.description %>" data-price="<%= code.price %>">
-                                        <%= code.description %>
-                                    </button>
-                                    <% }); %>
-                                        <button type="button" class="quick-add-proc" data-code="EXT" data-desc="ถอนฟัน"
-                                            data-price="900">ถอนฟัน</button>
-                                        <button type="button" class="quick-add-proc" data-code="SURG-EXT"
-                                            data-desc="ผ่าฟันคุด" data-price="2500">ผ่าฟันคุด</button>
-                                        <button type="button" class="quick-add-proc" data-code="CROWN"
-                                            data-desc="ครอบฟัน" data-price="8000">ครอบฟัน</button>
-                                        <button type="button" class="quick-add-proc" data-code="BLEACH"
-                                            data-desc="ฟอกสีฟัน" data-price="3500">ฟอกสีฟัน</button>
-                                        <button type="button" class="quick-add-proc" data-code="XRAY-SM"
-                                            data-desc="เอ็กซเรย์ฟิล์มเล็ก" data-price="300">เอ็กซเรย์</button>
-                            </div>
-                            <div class="custom-procedure-adder">
-                                <input type="text" id="custom-proc-desc" class="form-control"
-                                    placeholder="เพิ่มรายการอื่น ๆ">
-                                <input type="number" id="custom-proc-price" class="form-control" placeholder="ราคา">
-                                <button type="button" id="add-custom-proc-btn" class="btn btn-info">เพิ่ม</button>
-                            </div>
-
-                            <hr>
-
-                            <h6>ซี่ฟันที่รักษา (เลือกหลายซี่ได้)</h6>
-                            <div class="tooth-chart-container mt-3">
-                                <div class="tooth-type-toggle">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="tooth-type"
-                                            id="adult-teeth-radio" value="adult" checked>
-                                        <label class="form-check-label" for="adult-teeth-radio">ฟันแท้ (11-48)</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="tooth-type"
-                                            id="child-teeth-radio" value="child">
-                                        <label class="form-check-label" for="child-teeth-radio">ฟันน้ำนม (51-85)</label>
-                                    </div>
-                                </div>
-
-                                <div class="adult-teeth">
-                                    <div class="tooth-row">
-                                        <% for (let i=11; i <=18; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=21; i <=28; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=31; i <=38; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=41; i <=48; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                </div>
-                                <div class="child-teeth">
-                                    <div class="tooth-row">
-                                        <% for (let i=51; i <=55; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=61; i <=65; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=71; i <=75; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                    <div class="tooth-row">
-                                        <% for (let i=81; i <=85; i++) { %>
-                                            <div class="tooth" data-tooth-id="<%= i %>">
-                                                <%= i %>
-                                            </div>
-                                            <% } %>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- File Uploads Card -->
-                    <div class="card">
-                        <div class="card-header">ไฟล์แนบ / X-Ray</div>
-                        <div class="card-body">
-                            <div id="file-drop-area" class="file-drop-area">
-                                <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
-                                <p>ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
-                            </div>
-                            <div id="file-list-display" class="mt-3"></div>
-                        </div>
-                    </div>
+              <div class="form-row">
+                <div class="form-group col-md-6">
+                  <label for="visit_date">วันที่</label>
+                  <input type="datetime-local" class="form-control" id="visit_date" name="visit_date" required/>
+                </div>
+                <div class="form-group col-md-6">
+                  <label for="doctor_name">แพทย์</label>
+                  <input type="text" class="form-control" id="doctor_name" name="doctor_name" value="<%= doctor_name %>" readonly/>
                 </div>
 
-                <!-- Right Column -->
-                <div class="col-lg-4">
-                    <div class="treatment-summary-section">
-                        <div class="card">
-                            <div class="card-header">สรุปค่าใช้จ่าย</div>
-                            <div class="card-body" style="padding: 0;">
-                                <table class="treatment-list-table">
-                                    <thead>
-                                        <tr>
-                                            <th>รายการ</th>
-                                            <th style="width: 90px;">จำนวน</th>
-                                            <th style="width: 140px;">ราคา</th>
-                                            <th style="width: 40px;"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="treatment-list-body">
-                                        <!-- Rows will be added by JS -->
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted p-4">ยังไม่มีรายการ</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-footer">
-                                <table class="cost-summary-table">
-                                    <tbody>
-                                        <tr>
-                                            <td class="label">ยอดรวม</td>
-                                            <td class="value" id="subtotal">฿0.00</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="total-label">ยอดสุทธิ</td>
-                                            <td class="total-value" id="total-amount">฿0.00</td>
-                                            <input type="hidden" name="amount" id="amount-input">
-
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <button type="submit" class="btn btn-primary btn-block btn-lg">บันทึกการรักษา</button>
-                            <a href="/dentist/patients" class="btn btn-secondary btn-block">ยกเลิก</a>
-                        </div>
-                    </div>
+                <div class="form-group col-md-6">
+                  <label>Blood Pressure (SYS/DIA)</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" name="bp_sys" placeholder="Systolic"/>
+                    <input type="number" class="form-control" name="bp_dia" placeholder="Diastolic"/>
+                  </div>
                 </div>
+
+                <div class="form-group col-md-6">
+                  <label for="pulse_rate">Pulse Rate</label>
+                  <input type="number" class="form-control" id="pulse_rate" name="pulse_rate" placeholder="bpm"/>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="clinical_notes">Clinical Notes</label>
+                <textarea class="form-control" name="clinical_notes" id="clinical_notes" rows="3" placeholder="บันทึกรายละเอียดอาการ / ข้อวินิจฉัย / การตรวจ"></textarea>
+              </div>
             </div>
-        </form>
-    </div>
+          </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script nonce="<%= locals.nonce %>">
-        document.addEventListener('DOMContentLoaded', function () {
-            // Set current date and time
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('visit_date').value = now.toISOString().slice(0, 16);
+          <div class="card">
+            <div class="card-header">หัตถการและการรักษา</div>
+            <div class="card-body">
+              <div class="procedure-quick-select">
+                <% procedure_codes.forEach(code => { %>
+                  <button type="button" class="quick-add-proc"
+                          data-code="<%= code.code %>"
+                          data-desc="<%= code.description %>"
+                          data-price="<%= code.price %>"><%= code.description %></button>
+                <% }); %>
+                <!-- ตัวอย่างปุ่มเสริม -->
+                <button type="button" class="quick-add-proc" data-code="EXT" data-desc="ถอนฟัน" data-price="900">ถอนฟัน</button>
+                <button type="button" class="quick-add-proc" data-code="SURG-EXT" data-desc="ผ่าฟันคุด" data-price="2500">ผ่าฟันคุด</button>
+                <button type="button" class="quick-add-proc" data-code="CROWN" data-desc="ครอบฟัน" data-price="8000">ครอบฟัน</button>
+                <button type="button" class="quick-add-proc" data-code="BLEACH" data-desc="ฟอกสีฟัน" data-price="3500">ฟอกสีฟัน</button>
+                <button type="button" class="quick-add-proc" data-code="XRAY-SM" data-desc="เอ็กซเรย์ฟิล์มเล็ก" data-price="300">เอ็กซเรย์</button>
+              </div>
 
-            const proceduresInput = document.getElementById('procedures-input');
-            const treatmentListBody = document.getElementById('treatment-list-body');
-            const subtotalEl = document.getElementById('subtotal');
-            const totalAmountEl = document.getElementById('total-amount');
-            let treatmentItems = []; // Array to hold procedure objects
-            let activeRowId = null;
+              <div class="custom-procedure-adder">
+                <input type="text" id="custom-proc-desc" class="form-control" placeholder="เพิ่มรายการอื่น ๆ"/>
+                <input type="number" id="custom-proc-price" class="form-control" placeholder="ราคา"/>
+                <button type="button" id="add-custom-proc-btn" class="btn btn-info">เพิ่ม</button>
+              </div>
 
-            // --- Tooth Chart Logic ---
-            const adultTeethDiv = document.querySelector('.adult-teeth');
-            const childTeethDiv = document.querySelector('.child-teeth');
-            const allTeeth = document.querySelectorAll('.tooth');
+              <hr/>
 
-            document.querySelectorAll('input[name="tooth-type"]').forEach(radio => {
-                radio.addEventListener('change', function () {
-                    adultTeethDiv.style.display = this.value === 'adult' ? 'block' : 'none';
-                    childTeethDiv.style.display = this.value === 'child' ? 'block' : 'none';
-                    clearToothSelection();
-                    if (activeRowId) {
-                        const activeItem = treatmentItems.find(i => i.id === activeRowId);
-                        if (activeItem && activeItem.isPerTooth) {
-                            syncToothSelection(activeItem.tooth_no);
-                        }
-                    }
-                });
-            });
+              <div id="teeth-helper" class="teeth-helper alert alert-info" style="display:none;"></div>
 
-            allTeeth.forEach(tooth => {
-                tooth.addEventListener('click', function () {
-                    if (!activeRowId) return;
-                    const activeItem = treatmentItems.find(i => i.id === activeRowId);
-                    if (!activeItem || !activeItem.isPerTooth) {
-                        clearToothSelection();
-                        return;
-                    }
-                    this.classList.toggle('selected');
-                    updateSelectedTeethForActiveRow();
-                });
-            });
+              <h6 class="mb-2">ซี่ฟันที่รักษา (เลือกหลายซี่ได้)</h6>
+              <div class="tooth-chart-container mt-3" id="tooth-chart">
+                <div class="tooth-type-toggle">
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tooth-type" id="adult-teeth-radio" value="adult" checked/>
+                    <label class="form-check-label" for="adult-teeth-radio">ฟันแท้ (11-48)</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tooth-type" id="child-teeth-radio" value="child"/>
+                    <label class="form-check-label" for="child-teeth-radio">ฟันน้ำนม (51-85)</label>
+                  </div>
+                </div>
 
-            function clearToothSelection() {
-                allTeeth.forEach(t => t.classList.remove('selected'));
-            }
+                <div id="teeth-disabled-overlay" class="teeth-disabled" style="display:none;">
+                  <div>เลือกแถวหัตถการที่ “ต่อซี่” ก่อน แล้วคลิกซี่ฟันที่นี่</div>
+                </div>
 
-            function updateSelectedTeethForActiveRow() {
-                if (!activeRowId) return;
-                const selectedTeeth = Array.from(document.querySelectorAll('.tooth.selected')).map(t => t.dataset.toothId);
-                const item = treatmentItems.find(i => i.id === activeRowId);
-                if (item && item.isPerTooth) {
-                    item.tooth_no = selectedTeeth.join(', ');
-                    item.qty = selectedTeeth.length > 0 ? selectedTeeth.length : 1;
-                } else if (item) {
-                    item.tooth_no = '';
-                }
-                renderAndCalculate();
-            }
+                <div class="adult-teeth">
+                  <div class="tooth-row"><% for (let i=11;i<=18;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=21;i<=28;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=31;i<=38;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=41;i<=48;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                </div>
+                <div class="child-teeth">
+                  <div class="tooth-row"><% for (let i=51;i<=55;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=61;i<=65;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=71;i<=75;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                  <div class="tooth-row"><% for (let i=81;i<=85;i++){ %><div class="tooth" data-tooth-id="<%= i %>"><%= i %></div><% } %></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            function syncToothSelection(tooth_csv) {
-                clearToothSelection();
-                if (tooth_csv && tooth_csv.length > 0) {
-                    const teeth = tooth_csv.split(',').map(s => s.trim());
-                    teeth.forEach(toothId => {
-                        const toothEl = document.querySelector(`.tooth[data-tooth-id='${toothId}']`);
-                        if (toothEl) toothEl.classList.add('selected');
-                    });
-                }
-            }
+          <div class="card">
+            <div class="card-header">ไฟล์แนบ / X-Ray</div>
+            <div class="card-body">
+              <div id="file-drop-area" class="file-drop-area">
+                <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                <p>ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+              </div>
+              <div id="file-list-display" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
 
-            // --- Procedure Management ---
-            document.querySelectorAll('.quick-add-proc').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    addProcedure({
-                        code: this.dataset.code,
-                        description: this.dataset.desc,
-                        price: parseFloat(this.dataset.price)
-                    });
-                });
-            });
+        <!-- Right -->
+        <div class="col-lg-4">
+          <div class="treatment-summary-section">
+            <div class="card">
+              <div class="card-header">สรุปค่าใช้จ่าย</div>
+              <div class="card-body" style="padding:0;">
+                <table class="treatment-list-table">
+                  <thead>
+                    <tr>
+                      <th>รายการ</th>
+                      <th style="width:90px;">จำนวน</th>
+                      <th style="width:140px;">ราคา</th>
+                      <th style="width:40px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="treatment-list-body">
+                    <tr><td colspan="4" class="text-center text-muted p-4">ยังไม่มีรายการ</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card-footer">
+                <table class="cost-summary-table">
+                  <tbody>
+                    <tr><td class="label">ยอดรวม</td><td class="value" id="subtotal">฿0.00</td></tr>
+                    <tr>
+                      <td class="total-label">ยอดสุทธิ</td>
+                      <td class="total-value" id="total-amount">฿0.00</td>
+                      <input type="hidden" name="amount" id="amount-input"/>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-            const customProcDescInput = document.getElementById('custom-proc-desc');
-            const customProcPriceInput = document.getElementById('custom-proc-price');
-            document.getElementById('add-custom-proc-btn').addEventListener('click', function () {
-                const desc = customProcDescInput.value.trim();
-                const price = parseFloat(customProcPriceInput.value) || 0;
-                if (!desc || price <= 0) return alert('กรุณาใส่ชื่อรายการและราคาให้ถูกต้อง');
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary btn-block btn-lg">บันทึกการรักษา</button>
+              <a href="/dentist/patients" class="btn btn-secondary btn-block">ยกเลิก</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
 
-                addProcedure({
-                    code: `CUSTOM_${Date.now()}`,
-                    description: desc,
-                    price: price
-                });
-                customProcDescInput.value = '';
-                customProcPriceInput.value = '';
-            });
+  <!-- JS libs -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-            function addProcedure(procData) {
-                const perToothKeywords = ['อุดฟัน', 'รักษารากฟัน', 'ถอนฟัน', 'ครอบฟัน', 'วีเนียร์', 'เกลารากฟัน', 'ผ่าฟันคุด', 'เอ็กซเรย์'];
-                const isPerTooth = perToothKeywords.some(keyword => procData.description.includes(keyword));
-
-                if (procData.code && !procData.code.startsWith('CUSTOM_') && !isPerTooth && treatmentItems.some(item => item.code === procData.code)) {
-                    return alert(`${procData.description} มีอยู่ในรายการแล้ว`);
-                }
-
-                const newItem = {
-                    id: `proc_${Date.now()}`,
-                    code: procData.code,
-                    description: procData.description,
-                    price_each: procData.price,
-                    qty: 1,
-                    tooth_no: '',
-                    isPerTooth: isPerTooth
-                };
-                treatmentItems.push(newItem);
-                setActiveRow(newItem.id);
-                renderAndCalculate();
-            }
-
-            window.removeProcedure = function (id) {
-                treatmentItems = treatmentItems.filter(item => item.id !== id);
-                if (activeRowId === id) {
-                    activeRowId = null;
-                    clearToothSelection();
-                    document.getElementById('adult-teeth-radio').checked = true;
-                    adultTeethDiv.style.display = 'block';
-                    childTeethDiv.style.display = 'none';
-                }
-                renderAndCalculate();
-            }
-
-            window.updateQty = function (id, newQty) {
-                const item = treatmentItems.find(i => i.id === id);
-                if (item && !item.isPerTooth) item.qty = Math.max(0, parseInt(newQty) || 0);
-                renderAndCalculate();
-            }
-
-            window.updatePrice = function (id, newPrice) {
-                const item = treatmentItems.find(i => i.id === id);
-                if (item) item.price_each = parseFloat(newPrice) || 0;
-                renderAndCalculate();
-            }
-
-            window.setActiveRow = function (id) {
-                activeRowId = id;
-                const item = treatmentItems.find(i => i.id === id);
-                clearToothSelection();
-                document.querySelectorAll('#treatment-list-body tr').forEach(row => row.classList.remove('active-row'));
-                if (id) {
-                    const clickedRow = document.querySelector(`#treatment-list-body tr[data-item-id='${id}']`);
-                    if (clickedRow) clickedRow.classList.add('active-row');
-                }
-
-                if (item && item.isPerTooth) {
-                    syncToothSelection(item.tooth_no);
-                    const selectedToothIds = item.tooth_no.split(',').map(s => s.trim()).filter(Boolean).map(Number);
-                    let isChild = selectedToothIds.some(toothNum => toothNum >= 51 && toothNum <= 85);
-
-                    document.getElementById(isChild ? 'child-teeth-radio' : 'adult-teeth-radio').checked = true;
-                    adultTeethDiv.style.display = isChild ? 'none' : 'block';
-                    childTeethDiv.style.display = isChild ? 'block' : 'none';
-                } else {
-                    document.getElementById('adult-teeth-radio').checked = true;
-                    adultTeethDiv.style.display = 'block';
-                    childTeethDiv.style.display = 'none';
-                }
-            }
-
-            function renderAndCalculate() {
-                let subtotal = 0;
-                if (treatmentItems.length === 0) {
-                    treatmentListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-4">ยังไม่มีรายการ</td></tr>';
-                } else {
-                    treatmentListBody.innerHTML = treatmentItems.map(item => {
-                        subtotal += item.qty * item.price_each;
-                        const activeClass = item.id === activeRowId ? 'active-row' : '';
-                        const qtyInputReadonly = item.isPerTooth ? 'readonly' : '';
-                        return `
-                <tr class="${activeClass}" data-item-id="${item.id}">
-                    <td>
-                        ${item.description}
-                        ${item.tooth_no && item.isPerTooth ? `<div class='text-muted small'>ซี่: ${item.tooth_no}</div>` : ''}
-                    </td>
-                    <td><input type="number" class="form-control" value="${item.qty}" onchange="updateQty('${item.id}', this.value)" ${qtyInputReadonly}></td>
-                    <td><input type="number" step="0.01" class="form-control" value="${item.price_each.toFixed(2)}" onchange="updatePrice('${item.id}', this.value)"></td>
-                    <td><button type="button" class="remove-proc-btn" onclick="removeProcedure('${item.id}')"><i class="fas fa-trash-alt"></i></button></td>
-                </tr>
-            `;
-                    }).join('');
-
-                    treatmentListBody.querySelectorAll('tr[data-item-id]').forEach(row => {
-                        row.addEventListener('click', e => {
-                            if (e.target.tagName.toLowerCase() !== 'input' && e.target.closest('button') === null) {
-                                setActiveRow(row.dataset.itemId);
-                            }
-                        });
-                    });
-                }
-
-                subtotalEl.textContent = `฿${subtotal.toFixed(2)}`;
-                totalAmountEl.textContent = `฿${subtotal.toFixed(2)}`;
-                proceduresInput.value = JSON.stringify(treatmentItems.map(({ id, isPerTooth, ...rest }) => rest));
-
-              
-                document.getElementById('amount-input').value = subtotal.toFixed(2);
-            }
-
-
-            // --- File Upload Logic ---
-            const dropArea = document.getElementById('file-drop-area');
-            const fileInput = document.getElementById('xray-files-input');
-            const fileListDisplay = document.getElementById('file-list-display');
-
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, false);
-            });
-            dropArea.addEventListener('click', () => fileInput.click());
-            dropArea.addEventListener('drop', e => fileInput.files = e.dataTransfer.files, false);
-            fileInput.addEventListener('change', () => {
-                fileListDisplay.innerHTML = ''; // Clear previous list
-                if (fileInput.files.length > 0) {
-                    Array.from(fileInput.files).forEach(file => {
-                        fileListDisplay.innerHTML += `<div class="file-item"><span>${file.name}</span> <small>${(file.size / 1024).toFixed(1)} KB</small></div>`;
-                    });
-                }
-            });
-
-            renderAndCalculate();
-        });
-    </script>
+  <!-- App JS (ภายนอก) -->
+  <script src="/public/js/treatment.js"></script>
 </body>
-
 </html>

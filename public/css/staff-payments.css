@@ -1,195 +1,171 @@
-/* public/css/staff-payments.css */
-
-/* ========== Variables (สีเดิม) ========== */
-:root {
-  --brand-primary: #2f6fb7;    /* น้ำเงินเดิม */
-  --brand-secondary: #f3f5ff;  /* hover ฟ้าอ่อน */
-  --bg: #fafbff;               /* แถวคู่ */
-  --border-color: #e0e0e0;
-  --text-primary: #212121;
-  --text-secondary: #6b7280;
+/* === Theme === */
+:root{
+  --brand:#2f6fb7;
+  --brand-soft:#f3f5ff;
+  --row-alt:#fafbff;
+  --line:#e2e5ea;
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --h:40px;     /* control height */
+  --r:10px;     /* radius */
 }
 
-/* Layout */
-.main-content > .container {
-  padding: 2rem;
-  color: var(--text-primary);
+/* === Layout: ให้กว้างเท่าหน้าเวชระเบียน === */
+.main-content > .container{
+  width:100%;
+  max-width:1480px;   /* เท่า ๆ หน้าที่กระจาย */
+  margin-inline:auto;
+  padding:24px 20px;
+  color:var(--ink);
 }
+.page-title{ margin:0 0 12px; }
 
-/* Toolbar: Search/Filter */
-.payments-toolbar {
-  background: #fff;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  display: block;
+/* === Toolbar (คอนโทรลสูงเท่ากัน) === */
+.payments-toolbar{
+  background:#fff; border:1px solid var(--line);
+  border-radius:12px; padding:14px 16px; margin-bottom:16px;
 }
-.toolbar-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr auto;
-  gap: 12px;
-  align-items: end;
+.toolbar-row{
+  display:grid;
+  grid-template-columns: 2fr 1.1fr 1.1fr 1.2fr auto; /* กินพื้นที่เต็ม */
+  gap:14px; align-items:end;
 }
-.toolbar-field label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+.toolbar-field label{
+  display:block; font-size:12px; color:var(--muted); margin-bottom:6px;
 }
 .toolbar-field input[type="text"],
-.toolbar-field input[type="date"] {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
+.toolbar-field input[type="date"],
+.toolbar-field select{
+  height:var(--h); width:100%; padding:0 12px;
+  border:1px solid var(--line); border-radius:var(--r);
+  background:#fff; color:var(--ink); font-size:14px; outline:none;
 }
-.toolbar-field input:focus {
-  border-color: #2f6fb7;
-  box-shadow: 0 0 0 3px rgba(91,110,225,0.15);
+.toolbar-field select{
+  -webkit-appearance:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5' stroke='%23556677' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; background-size:14px;
+  padding-right:36px;
 }
-.toolbar-actions { display: flex; gap: 8px; }
-.btn.primary {
-  background: var(--brand-primary);
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
+.toolbar-field input:focus,
+.toolbar-field select:focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(47,111,183,.18);
 }
-.btn.primary:hover { filter: brightness(0.95); }
-.btn.ghost {
-  background: #fff;
-  color: var(--brand-primary);
-  border: 1px solid var(--brand-primary);
-  padding: 8px 14px;
-  border-radius: 8px;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.toolbar-actions{ display:flex; gap:10px; align-items:center; justify-self:end; }
+.btn{
+  height:var(--h); padding:0 14px; border-radius:8px; border:1px solid transparent;
+  font-weight:600; cursor:pointer;
 }
-.btn.ghost:hover { background: var(--brand-secondary); }
+.btn.primary{ background:var(--brand); color:#fff; }
+.btn.primary:hover{ filter:brightness(.96); }
+.btn.ghost{
+  background:#fff; color:var(--brand); border-color:var(--brand);
+  text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+}
+.btn.ghost:hover{ background:var(--brand-soft); }
 
-/* Table Card */
-.payments-table {
-  background: #fff;
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  overflow: auto;
-  font-size: 14px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-  max-height: 70vh;
-  min-width: 960px;
+/* === Table (เต็มความกว้าง) === */
+.payments-table{
+  width:100%;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:auto;
+  font-size:14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.03);
+  max-height:70vh;
 }
-
-/* Grid layout (6 คอลัมน์) */
 .payments-thead,
-.payments-trow {
-  display: grid;
-  grid-template-columns: 0.6fr 1.6fr 1fr 1.4fr 1fr 1.2fr;
-  gap: 16px;
-  align-items: center;
-  padding: 10px 16px;
+.payments-trow{
+  display:grid;
+  /* กระจายกว้างเหมือนหน้าเวชระเบียน */
+  grid-template-columns: 90px 2.6fr 1.1fr 1.6fr 1fr 1.2fr;
+  gap:16px; align-items:center; padding:12px 16px;
+}
+.payments-thead{
+  background:var(--brand); color:#fff; font-weight:600; font-size:.9rem;
+  letter-spacing:.3px; text-transform:uppercase;
+  position:sticky; top:0; z-index:2;
+  border-bottom:2px solid #2f6fb7;
+  box-shadow:0 2px 6px rgba(91,110,225,.15);
+}
+.payments-trow{
+  border-top:1px solid var(--line);
+  transition:background-color .15s ease;
+}
+.payments-trow:nth-child(even){ background:var(--row-alt); }
+.payments-trow:hover{ background:var(--brand-soft); }
+
+/* Status */
+.status-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:84px; height:28px; padding:0 10px;
+  border-radius:8px; font-weight:700; font-size:12px; text-transform:uppercase;
+  border:1px solid transparent;
+}
+.status-paid{ background:#e7f7ec; color:#207a42; border-color:#cfeede; }
+.status-pending{ background:#fff6db; color:#9a7700; border-color:#f2e4ad; }
+.status-void{ background:#f3f4f6; color:#6b7280; border-color:#e5e7eb; }
+
+/* ปุ่มยืนยันในแถว */
+.btn.success{
+  height:34px; padding:0 12px; border:none; border-radius:8px;
+  background:#1e9153; color:#fff; font-weight:600;
+}
+.btn.success:hover{ filter:brightness(1.05); }
+
+/* ว่าง */
+.empty-payments{ text-align:center; padding:3rem; color:var(--muted); }
+
+/* === Pagination: ปุ่มก่อนหน้า/เลข/ถัดไป “ระดับเดียวกัน” === */
+.pager-wrap{
+  margin-top:16px;
+  display:flex;
+  align-items:center;        /* 👈 ทำให้สูงเท่ากัน */
+  justify-content:center;
+  gap:12px; flex-wrap:wrap;
+}
+.pager-line{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
 }
 
-/* Header */
-.payments-thead {
-  font-weight: 600;
-  color: #fff;
-  background: var(--brand-primary);
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  border-bottom: 2px solid #2f6fb7;
-  box-shadow: 0 2px 6px rgba(91,110,225,0.15);
+.pager-btn, .pager-num{
+  min-width:36px; height:34px; padding:0 10px;
+  border:1px solid var(--line);
+  border-radius:4px;          /* แบบเหลี่ยม */
+  background:#fff; color:var(--ink);
+  text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+  transition:background .15s ease;
 }
+.pager-num.active{ background:var(--brand); color:#fff; border-color:var(--brand); }
+.pager-btn:hover, .pager-num:hover{ background:var(--brand-soft); }
+.pager-btn.disabled{ opacity:.5; pointer-events:none; }
+.pager-ellipsis{ color:var(--muted); padding:0 6px; }
 
-/* Rows */
-.payments-trow { border-top: 1px solid var(--border-color); transition: background-color .15s ease, box-shadow .15s ease; }
-.payments-trow:nth-child(even) { background-color: var(--bg); }
-.payments-trow:hover { background-color: var(--brand-secondary); }
+.page-size-form{
+  margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.page-size-form select{
+  height:34px; padding:0 10px; border-radius:6px; border:1px solid var(--line);
+}
+.muted{ color:var(--muted); font-size:12px; }
 
-/* Status badge */
-.status-badge {
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 12px;
-  text-align: center;
-  text-transform: uppercase;
-  display: inline-block;
-}
-.status-paid {
-  background-color: #e2f5ea;
-  color: #34a853;
-  border: 1px solid #bfe9ce;
-}
-.status-pending {
-  background-color: #feefc3;
-  color: #fbbc05;
-  border: 1px solid #f6df8a;
-}
+/* === Scrollbar & Responsive === */
+.payments-table::-webkit-scrollbar{ height:8px; width:8px; }
+.payments-table::-webkit-scrollbar-thumb{ background:#c7ccd4; border-radius:4px; }
+.payments-table::-webkit-scrollbar-thumb:hover{ background:#aeb5bf; }
 
-/* Button in rows */
-.btn.success {
-  background-color: #34a853;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-  transition: background-color .15s ease, box-shadow .15s ease;
+@media (max-width:1280px){
+  .payments-thead, .payments-trow{ grid-template-columns: 80px 2.2fr 1.1fr 1.5fr 1fr 1.2fr; }
 }
-.btn.success:hover { background-color: #2c8f45; }
-
-/* Empty */
-.empty-payments {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
-  background: #fff;
+@media (max-width:900px){
+  .toolbar-row{ grid-template-columns: 1fr 1fr; }
 }
-
-/* Pagination */
-.pager {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 16px;
-}
-.pager-btn, .pager-num {
-  display: inline-block; padding: 6px 10px;
-  border: 1px solid var(--border-color); border-radius: 8px;
-  text-decoration: none; color: var(--text-primary); background: #fff;
-  transition: all .15s ease;
-}
-.pager-num.active { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
-.pager-btn:hover, .pager-num:hover { background: var(--brand-secondary); }
-.pager-btn.disabled { opacity: .5; pointer-events: none; }
-.pager-ellipsis { padding: 0 6px; color: var(--text-secondary); }
-.page-size-form { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
-.page-size-form select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
-.muted { color: var(--text-secondary); font-size: 12px; }
-
-/* Scrollbar + Responsive */
-.payments-table::-webkit-scrollbar { height: 8px; width: 8px; }
-.payments-table::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-.payments-table::-webkit-scrollbar-thumb:hover { background: #999; }
-
-@media (max-width: 1024px) {
-  .toolbar-row { grid-template-columns: 1fr 1fr; }
-  .payments-thead, .payments-trow { padding: 10px 12px; gap: 12px; }
-}
-@media (max-width: 640px) {
-  .toolbar-row { grid-template-columns: 1fr; }
-}
-@media (max-width: 768px) {
-  .payments-table { min-width: 820px; }
+@media (max-width:620px){
+  .toolbar-row{ grid-template-columns: 1fr; }
+  .toolbar-actions{ justify-self:stretch; }
+  .payments-thead, .payments-trow{
+    grid-template-columns: 70px 1.7fr 1fr 1.4fr 1fr; /* ปุ่มไปบรรทัดถัดไป */
+  }
+  .payments-trow > div:last-child{ grid-column: 1 / -1; }
 }

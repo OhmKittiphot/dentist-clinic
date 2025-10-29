@@ -4,14 +4,14 @@ const router = express.Router();
 const db = require('../db');
 const { allowRoles } = require('../utils/auth');
 
-// ===============================
-// 🔹 Patients List
-// ===============================
+/* ===============================
+ * 🔹 Patients List + Payment-style Pagination
+ * =============================== */
 router.get('/patients', allowRoles('staff'), (req, res, next) => {
   const searchQuery = req.query.search || '';
-  const currentPage = parseInt(req.query.page) || 1;
-  const limit = 15;
-  const offset = (currentPage - 1) * limit;
+  const page = parseInt(req.query.page, 10) || 1;
+  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 15, 5), 100); // 5–100
+  const offset = (page - 1) * pageSize;
   const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
 
   let countSql = `SELECT COUNT(id) AS count FROM patients`;
@@ -29,35 +29,37 @@ router.get('/patients', allowRoles('staff'), (req, res, next) => {
     const whereClause = ` WHERE first_name LIKE ? OR last_name LIKE ? OR printf('CN%04d', id) LIKE ? `;
     countSql += whereClause;
     sql += whereClause;
-    const searchTerm = `%${searchQuery}%`;
-    params.push(searchTerm, searchTerm, searchTerm);
+    const t = `%${searchQuery}%`;
+    params.push(t, t, t);
   }
 
   db.get(countSql, params, (err, row) => {
     if (err) return next(err);
-    const totalPatients = row.count;
-    const totalPages = Math.ceil(totalPatients / limit);
+    const total = row?.count || 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     sql += ` ORDER BY first_name, last_name LIMIT ? OFFSET ?;`;
-    db.all(sql, [...params, limit, offset], (err, patients) => {
-      if (err) return next(err);
+    db.all(sql, [...params, pageSize, offset], (err2, patients) => {
+      if (err2) return next(err2);
       res.render('staff/index', {
         patients,
         user: req.user,
         userRole: req.user.role,
         searchQuery,
-        currentPage,
+        page,
+        pageSize,
+        total,
         totalPages,
         successMessage,
-        page: 'patients'
+        pageId: 'patients'
       });
     });
   });
 });
 
-// ===============================
-// 🔹 Edit Patient
-// ===============================
+/* ===============================
+ * 🔹 Edit Patient (เหมือนเดิม)
+ * =============================== */
 router.get('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
   const patientId = req.params.id;
   const sql = "SELECT *, printf('CN%04d', id) as clinic_number FROM patients WHERE id = ?";
@@ -97,18 +99,18 @@ router.post('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
   });
 });
 
-// ===============================
-// 🔹 Payments List + Pagination
-// ===============================
+/* ===============================
+ * 🔹 Payments (อัปเดต: รองรับ sort)
+ * =============================== */
 router.get('/payments', allowRoles('staff'), (req, res, next) => {
   const page = parseInt(req.query.page, 10) || 1;
   const pageSize = parseInt(req.query.pageSize, 10) || 10;
   const q = req.query.q || '';
   const date_from = req.query.date_from || '';
   const date_to = req.query.date_to || '';
+  const sort = req.query.sort || 'latest'; // 👈 ใหม่: ตัวเลือกการเรียง
   const offset = (page - 1) * pageSize;
 
-  // สร้างเงื่อนไขค้นหาแบบ flexible
   const whereClauses = [];
   const params = [];
 
@@ -126,6 +128,28 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
   }
 
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  // ✅ สูตร ORDER BY ตามตัวเลือก
+  let orderSql = "COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC"; // latest (เดิม)
+  switch (sort) {
+    case 'unpaid_first': // ยังไม่ชำระก่อน
+      orderSql = `
+        CASE 
+          WHEN p.status = 'pending' THEN 0 
+          WHEN p.status = 'void'    THEN 1 
+          ELSE 2 
+        END ASC,
+        COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC
+      `;
+      break;
+    case 'amount_desc':
+      orderSql = "p.amount DESC, p.id DESC";
+      break;
+    case 'amount_asc':
+      orderSql = "p.amount ASC, p.id ASC";
+      break;
+    // default: latest
+  }
 
   const countSql = `
     SELECT COUNT(p.id) AS total
@@ -146,7 +170,7 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
     LEFT JOIN visits v ON p.visit_id = v.id
     LEFT JOIN patients pt ON v.patient_id = pt.id
     ${whereSql}
-    ORDER BY COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC
+    ORDER BY ${orderSql}
     LIMIT ? OFFSET ?;
   `;
 
@@ -167,15 +191,13 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
         totalPages,
         q,
         date_from,
-        date_to
+        date_to,
+        sort // 👈 ส่งไป view
       });
     });
   });
 });
 
-// ===============================
-// 🔹 Confirm Payment
-// ===============================
 router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
   const sql = `
     UPDATE payments
@@ -185,7 +207,8 @@ router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
   `;
   db.run(sql, [req.params.id], (err) => {
     if (err) return next(err);
-    res.redirect('/staff/payments');
+    // กลับไปหน้าก่อนหน้าแบบปลอดภัย (ไม่ทับพารามิเตอร์ค้นหา)
+    res.redirect('back');
   });
 });
 

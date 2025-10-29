@@ -347,3 +347,28 @@ a {
   background-color: #e6f0ff;
   color: #0056b3;
 }
+
+/* ===== Payments-like Pager (reusable) ===== */
+.pager{
+  display:flex; align-items:center; justify-content:center;
+  gap:12px; margin-top:16px; flex-wrap:wrap;
+}
+.pager-btn, .pager-num{
+  display:inline-block; padding:6px 10px;
+  border:1px solid var(--line); border-radius:8px;
+  text-decoration:none; color: var(--ink); background:#fff;
+  transition:all .15s ease; min-width:40px; height:36px;
+  display:inline-flex; align-items:center; justify-content:center;
+  white-space:nowrap;
+}
+.pager-num.active{ background:#2f6fb7; color:#fff; border-color:#2f6fb7; }
+.pager-btn:hover, .pager-num:hover{ background:#f3f5ff; }
+.pager-btn.disabled{ opacity:.5; pointer-events:none; }
+.pager-ellipsis{ padding:0 6px; color:#6b7280; }
+
+.page-size-form{ margin-top:8px; display:flex; align-items:center; gap:8px; justify-content:center; }
+.page-size-form select{ padding:4px 8px; border-radius:6px; border:1px solid var(--line); }
+.muted{ color:#6b7280; font-size:12px; }
+
+/* กันหัวตารางกระดิก และไม่ให้ pagination อยู่ในกล่องสกรอลของตาราง */
+/*.table-body{ max-height: calc(100vh - 320px); overflow:auto; scrollbar-gutter: stable both-edges; }
