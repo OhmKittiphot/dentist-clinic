@@ -1,10 +1,15 @@
-<%- include('../partials/head', { userRole: userRole }) %>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <%- include('../partials/head', { userRole: userRole }) %>
+</head>
 <body>
   <div class="app">
     <%- include('../partials/navbar', { userRole: userRole }) %>
 
     <main class="main">
-      <% if (successMessage) { %>
+      <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+
         <div class="alert alert-success" id="success-alert">
           <%= successMessage %>
           <button type="button" class="close" onclick="document.getElementById('success-alert').style.display='none'">&times;</button>
@@ -20,6 +25,8 @@
         <div class="spacer"></div>
       </div>
 
+      <% const hasCreated = Array.isArray(patients) && patients.length > 0 && Object.prototype.hasOwnProperty.call(patients[0], 'created_at'); %>
+
       <section class="card" aria-label="ตารางเวชระเบียน">
         <header class="table-head">
           <div>CLINIC NUMBER</div>
@@ -27,7 +34,7 @@
           <div>นามสกุล</div>
           <div>อายุ</div>
           <div>เบอร์โทร</div>
-          <div>วันที่เพิ่มข้อมูล</div>
+          <% if (hasCreated) { %><div>วันที่เพิ่มข้อมูล</div><% } %>
           <div>ประวัติการรักษา</div>
         </header>
 
@@ -40,9 +47,11 @@
               <div><%= p.clinic_number %></div>
               <div><%= p.first_name %></div>
               <div><%= p.last_name %></div>
-              <div><%= p.age %></div>
-              <div><%= p.phone %></div>
-              <div><%= p.created_at %></div>
+              <div><%= (p.age ?? '-') %></div>
+              <div><%= p.phone || '-' %></div>
+              <% if (hasCreated) { %>
+                <div><%= p.created_at || '-' %></div>
+              <% } %>
               <div>
                 <a class="chip chip-history" href="/dentist/patients/<%= p.id %>/history">ดูประวัติ</a>
                 &nbsp;|&nbsp;

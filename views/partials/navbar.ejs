@@ -1,12 +1,12 @@
 <aside class="sidebar">
   <div class="brand">DENTALCARE</div>
 
-  <!-- 🔹 Navigation Menu -->
   <nav class="nav">
     <% if (userRole === 'dentist') { %>
       <h4 class="nav-group-title">Dentist Menu</h4>
       <ul class="nav-group">
         <li class="nav-item"><a class="nav-link <%= page === 'patients' ? 'active' : '' %>" href="/dentist/patients">เวชระเบียนผู้ป่วย</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'dentisttime' ? 'active' : '' %>" href="/dentist/dentisttime">ลงเวลา</a></li>
         <li class="nav-item"><a class="nav-link <%= page === 'schedule' ? 'active' : '' %>" href="/dentist/schedule">นัดหมาย [ยังไม่เสร็จ]</a></li>
       </ul>
     <% } %>
@@ -15,7 +15,6 @@
       <h4 class="nav-group-title">Staff Menu</h4>
       <ul class="nav-group">
         <li class="nav-item"><a class="nav-link <%= page === 'patients' ? 'active' : '' %>" href="/staff/patients">เวชระเบียนผู้ป่วย</a></li>
-        <li class="nav-item"><a class="nav-link <%= page === 'schedule' ? 'active' : '' %>" href="/staff/schedule">จัดการตารางนัด [ยังไม่เสร็จ]</a></li>
         <li class="nav-item"><a class="nav-link <%= page === 'unit' ? 'active' : '' %>" href="/staff/unit">จัดการยูนิต</a></li>
         <li class="nav-item"><a class="nav-link <%= page === 'queue' ? 'active' : '' %>" href="/staff/queue">จัดการคิว</a></li>
         <li class="nav-item"><a class="nav-link <%= page === 'payments' ? 'active' : '' %>" href="/staff/payments">ชำระเงิน [ยังไม่เสร็จ]</a></li>
@@ -32,7 +31,6 @@
     <% } %>
   </nav>
 
-  <!-- 🔹 Footer -->
   <div class="nav-footer">
     <a href="/logout"><span>ออกจากระบบ</span></a>
   </div>
