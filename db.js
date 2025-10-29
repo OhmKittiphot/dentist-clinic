@@ -1,5 +1,6 @@
-
 const sqlite3 = require('sqlite3').verbose();
+
+// ใช้ไฟล์เดียวกับของเดิม
 const DB_PATH = process.env.NODE_ENV === 'test' ? ':memory:' : './Dentalcare.db';
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -7,7 +8,28 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     return console.error("Error opening database", err.message);
   }
   console.log("Connected to the SQLite database.");
-  // Create payments table if it doesn't exist
+});
+
+db.serialize(() => {
+  // ✅ มาตรฐานให้ใช้ตารางชื่อ dental_units
+  const dentalUnitSchema = `
+    CREATE TABLE IF NOT EXISTS dental_units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unit_name TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE'))
+    );
+  `;
+  db.run(dentalUnitSchema, (err) => {
+    if (err) {
+      console.error("Error creating dental_units table", err.message);
+    } else {
+      // ไม่ seed ข้อมูล เพื่อไม่ชนกับข้อมูลจริงที่มีอยู่ 8 แถว
+      // ถ้าฐานข้อมูลว่างจริงๆ ค่อยเติมเองผ่านหน้า UI
+      console.log("Table 'dental_units' is ready.");
+    }
+  });
+
+  // (คงเดิม) payments
   const paymentSchema = `
     CREATE TABLE IF NOT EXISTS payments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +42,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
       FOREIGN KEY (staff_id) REFERENCES users (id)
     );
   `;
-  db.exec(paymentSchema, (err) => {
+  db.run(paymentSchema, (err) => {
     if (err) {
       console.error("Error creating payments table", err.message);
     }

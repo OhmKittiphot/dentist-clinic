@@ -4,13 +4,26 @@ const router = express.Router();
 const db = require('../db');
 const { allowRoles } = require('../utils/auth');
 
+/* ---------- Helper: เลือกชื่อตารางยูนิตแบบอัตโนมัติ ---------- */
+/** จะใช้ 'dental_units' ถ้ามีอยู่; ถ้าไม่มีจึง fallback ไป 'units' (กันโค้ดเก่า) */
+function resolveUnitTable(cb) {
+  db.get(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name = 'dental_units';",
+    [],
+    (err, row) => {
+      if (err) return cb(err);
+      cb(null, row ? 'dental_units' : 'units');
+    }
+  );
+}
+
 /* ===============================
- * 🔹 Patients List + Payment-style Pagination
+ * 🔹 Patients List + Pagination
  * =============================== */
 router.get('/patients', allowRoles('staff'), (req, res, next) => {
   const searchQuery = req.query.search || '';
   const page = parseInt(req.query.page, 10) || 1;
-  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 15, 5), 100); // 5–100
+  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 15, 5), 100);
   const offset = (page - 1) * pageSize;
   const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
 
@@ -58,7 +71,7 @@ router.get('/patients', allowRoles('staff'), (req, res, next) => {
 });
 
 /* ===============================
- * 🔹 Edit Patient (เหมือนเดิม)
+ * 🔹 Edit Patient (คงเดิม)
  * =============================== */
 router.get('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
   const patientId = req.params.id;
@@ -100,7 +113,7 @@ router.post('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
 });
 
 /* ===============================
- * 🔹 Payments (อัปเดต: รองรับ sort)
+ * 🔹 Payments (เหมือนเดิม, มี sort)
  * =============================== */
 router.get('/payments', allowRoles('staff'), (req, res, next) => {
   const page = parseInt(req.query.page, 10) || 1;
@@ -108,7 +121,7 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
   const q = req.query.q || '';
   const date_from = req.query.date_from || '';
   const date_to = req.query.date_to || '';
-  const sort = req.query.sort || 'latest'; // 👈 ใหม่: ตัวเลือกการเรียง
+  const sort = req.query.sort || 'latest';
   const offset = (page - 1) * pageSize;
 
   const whereClauses = [];
@@ -129,10 +142,9 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
 
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-  // ✅ สูตร ORDER BY ตามตัวเลือก
-  let orderSql = "COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC"; // latest (เดิม)
+  let orderSql = "COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC";
   switch (sort) {
-    case 'unpaid_first': // ยังไม่ชำระก่อน
+    case 'unpaid_first':
       orderSql = `
         CASE 
           WHEN p.status = 'pending' THEN 0 
@@ -148,7 +160,6 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
     case 'amount_asc':
       orderSql = "p.amount ASC, p.id ASC";
       break;
-    // default: latest
   }
 
   const countSql = `
@@ -192,7 +203,7 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
         q,
         date_from,
         date_to,
-        sort // 👈 ส่งไป view
+        sort
       });
     });
   });
@@ -207,8 +218,122 @@ router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
   `;
   db.run(sql, [req.params.id], (err) => {
     if (err) return next(err);
-    // กลับไปหน้าก่อนหน้าแบบปลอดภัย (ไม่ทับพารามิเตอร์ค้นหา)
     res.redirect('back');
+  });
+});
+
+/* ===============================
+ * 🔹 Unit Page
+ * =============================== */
+router.get('/unit', allowRoles('staff'), (req, res) => {
+  res.render('staff/unit', {
+    user: req.user,
+    userRole: req.user.role,
+    page: 'unit'
+  });
+});
+
+/* ===============================
+ * 🔹 Queue Page
+ * =============================== */
+router.get('/queue', allowRoles('staff'), (req, res) => {
+  res.render('staff/queue', {
+    user: req.user,
+    userRole: req.user.role,
+    page: 'queue'
+  });
+});
+
+/* ===============================
+ * 🔹 Unit API (สำหรับ unit.js)
+ *      → ตอนนี้จะอ่านจาก 'dental_units' เป็นหลัก
+ *        ถ้าไม่มีตารางนี้ จะ fallback ไป 'units'
+ * =============================== */
+
+// GET all units
+router.get('/api/units', allowRoles('staff'), (req, res, next) => {
+  resolveUnitTable((err, tableName) => {
+    if (err) return next(err);
+    db.all(`SELECT id, unit_name, status FROM ${tableName} ORDER BY id`, [], (e, rows) => {
+      if (e) return res.status(500).json({ error: 'Database error while fetching units.' });
+      res.json(rows);
+    });
+  });
+});
+
+// POST a new unit
+router.post('/api/units', allowRoles('staff'), (req, res, next) => {
+  const { unit_name, status } = req.body;
+  if (!unit_name) {
+    return res.status(400).json({ error: 'Unit name is required.' });
+  }
+  resolveUnitTable((err, tableName) => {
+    if (err) return next(err);
+    const sql = `INSERT INTO ${tableName} (unit_name, status) VALUES (?, ?)`;
+    db.run(sql, [unit_name, status || 'ACTIVE'], function(e) {
+      if (e) {
+        return res.status(500).json({ error: 'Database error while creating a unit.' });
+      }
+      res.status(201).json({ id: this.lastID, unit_name, status: status || 'ACTIVE' });
+    });
+  });
+});
+
+// PUT (update) a unit
+router.put('/api/units/:id', allowRoles('staff'), (req, res, next) => {
+  const { id } = req.params;
+  const { unit_name, status } = req.body;
+
+  if (!unit_name && !status) {
+    return res.status(400).json({ error: 'Either unit_name or status is required for update.' });
+  }
+
+  resolveUnitTable((err, tableName) => {
+    if (err) return next(err);
+
+    let sql = `UPDATE ${tableName} SET `;
+    const params = [];
+
+    if (unit_name) {
+      sql += 'unit_name = ? ';
+      params.push(unit_name);
+    }
+    if (status) {
+      if (unit_name) sql += ', ';
+      sql += 'status = ? ';
+      params.push(status);
+    }
+
+    sql += 'WHERE id = ?';
+    params.push(id);
+
+    db.run(sql, params, function(e) {
+      if (e) {
+        return res.status(500).json({ error: 'Database error while updating the unit.' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Unit not found.' });
+      }
+      res.json({ message: 'Unit updated successfully.' });
+    });
+  });
+});
+
+// DELETE a unit
+router.delete('/api/units/:id', allowRoles('staff'), (req, res, next) => {
+  const { id } = req.params;
+  resolveUnitTable((err, tableName) => {
+    if (err) return next(err);
+    const sql = `DELETE FROM ${tableName} WHERE id = ?`;
+    db.run(sql, [id], function(e) {
+      if (e) {
+        return res.status(500).json({ error: 'Database error while deleting the unit.' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Unit not found.' });
+      }
+      res.json({ message: 'Unit deleted successfully.' });
+    });
   });
 });
 
