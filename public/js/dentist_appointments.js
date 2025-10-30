@@ -13,25 +13,4 @@ document.addEventListener('DOMContentLoaded', function () {
     dateInput.addEventListener('change', function () {
         window.location.href = `/dentist/appointments?date=${this.value}`;
     });
-
-    // เพิ่มการแจ้งเตือนหากเป็นวันที่ในอดีต
-    const selectedDate = new Date(dateInput.value);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (selectedDate < today) {
-        // สามารถเพิ่มการแจ้งเตือนที่นี่ได้
-        console.log('แสดงนัดหมายในอดีต');
-    }
 });
-
-// ฟังก์ชัน helper สำหรับแสดงสถานะภาษาไทย
-function getStatusText(status) {
-    const statusMap = {
-        'PENDING': 'รอการยืนยัน',
-        'CONFIRMED': 'ยืนยันแล้ว',
-        'COMPLETED': 'เสร็จสิ้น',
-        'CANCELLED': 'ยกเลิก'
-    };
-    return statusMap[status] || status;
-}

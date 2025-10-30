@@ -6,7 +6,7 @@
       <h4 class="nav-group-title">Dentist Menu</h4>
       <ul class="nav-group">
         <li class="nav-item"><a class="nav-link <%= page === 'patients' ? 'active' : '' %>" href="/dentist/patients">เวชระเบียนผู้ป่วย</a></li>
-        <li class="nav-item"><a class="nav-link <%= page === 'appointments' ? 'active' : '' %>" href="/dentist/appointments">นัดหมาย</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'dentist_appointments' ? 'active' : '' %>" href="/dentist/dentist_appointments">นัดหมาย</a></li>
       </ul>
     <% } %>
 
@@ -25,7 +25,7 @@
       <h4 class="nav-group-title">เมนู</h4>
       <ul class="nav-group">
         <li class="nav-item"><a class="nav-link <%= page === 'dashboard' ? 'active' : '' %>" href="/patient/dashboard">แดชบอร์ด</a></li>
-        <li class="nav-item"><a class="nav-link <%= page === 'payments' ? 'active' : '' %>" href="/patient/patient_appointment">เพิ่มนัดหมาย</a></li>
+        <li class="nav-item"><a class="nav-link <%= page === 'patient_appointment' ? 'active' : '' %>" href="/patient/patient_appointment">เพิ่มนัดหมาย</a></li>
         <li class="nav-item"><a class="nav-link <%= page === 'payments' ? 'active' : '' %>" href="/patient/payments">รายการชำระเงิน</a></li>
         
       </ul>

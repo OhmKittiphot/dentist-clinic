@@ -12,7 +12,6 @@
     <main class="main-content">
       <div class="dashboard-header">
         <h1>แดชบอร์ดผู้ป่วย</h1>
-        <p>ยินดีต้อนรับ, <%= user.first_name %> <%= user.last_name %></p>
       </div>
 
       <div class="dashboard-grid">
@@ -74,18 +73,6 @@
                   <span class="label">หมายเหตุ:</span>
                   <span class="value"><%= appointment.notes %></span>
                 </div>
-                <% } %>
-              </div>
-
-              <div class="action-buttons">
-                <% if (!appointment.is_request) { %>
-                  <a href="/patient/appointments" class="btn btn-outline">ดูการนัดหมายทั้งหมด</a>
-                  <% if (['pending','confirmed'].includes(String(appointment.status).toLowerCase())) { %>
-                    <button class="btn btn-warning btn-reschedule" data-id="<%= appointment.id %>">เลื่อนนัด</button>
-                    <button class="btn btn-danger btn-cancel" data-id="<%= appointment.id %>">ยกเลิกนัด</button>
-                  <% } %>
-                <% } else { %>
-                  <a href="/patient/appointment-history" class="btn btn-outline"></a>
                 <% } %>
               </div>
             </div>
