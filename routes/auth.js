@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
 
     // สร้าง user ใหม่
     const [userResult] = await db.query(
-      `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'patient')`,
+      `INSERT INTO users (citizen_id, password, role, username) VALUES (?, ?, 'patient')`,
       [citizen_id, hashedPassword]
     );
     const userId = userResult.insertId;
@@ -120,7 +120,7 @@ router.post('/dentist/register', async (req, res) => {
     // Insert dentist
     await db.query(
       `INSERT INTO dentists (
-        user_id, license_number, pre_name, first_name, last_name, phone, email, specialty
+        user_id, license_number, pre_name, first_name, last_name, phone, email, speciality
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [userId, license_number, pre_name, first_name, last_name, phone, email, specialty || null]
     );
