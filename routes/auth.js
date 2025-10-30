@@ -1,11 +1,13 @@
-// Checked Register
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const db = require('../db');
+const db = require('../db'); // mysql2/promise
 const jwt = require('jsonwebtoken');
 
-// Patient Registration
+// ============================================================================
+// 🧩 Patient Registration
+// ============================================================================
 router.get('/register', (req, res) => {
   res.render('register', {
     title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic',
@@ -22,7 +24,6 @@ router.post('/register', async (req, res) => {
   } = req.body;
 
   const from = req.body.from || 'login';
-
   const renderError = (message) => {
     res.render('register', {
       title: 'สมัครสมาชิกผู้ป่วย | Dentalcare Clinic',
@@ -41,43 +42,44 @@ router.post('/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const userSql = `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'patient')`;
-    db.run(userSql, [citizen_id, hashedPassword], function (err) {
-      if (err) {
-        return renderError(err.code === 'SQLITE_CONSTRAINT' ? 'เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว' : 'เกิดข้อผิดพลาดในการลงทะเบียนผู้ใช้');
-      }
+    // ตรวจว่ามี user นี้อยู่แล้วหรือยัง
+    const [existing] = await db.query('SELECT id FROM users WHERE citizen_id = ?', [citizen_id]);
+    if (existing.length > 0) {
+      return renderError('เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว');
+    }
 
-      const userId = this.lastID;
-      const patientSql = `
-        INSERT INTO patients (
-          user_id, pre_name, first_name, last_name, gender, birth_date, phone, email, 
-          address, race, nationality, religion, drug_allergy
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      const patientParams = [
+    // สร้าง user ใหม่
+    const [userResult] = await db.query(
+      `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'patient')`,
+      [citizen_id, hashedPassword]
+    );
+    const userId = userResult.insertId;
+
+    // สร้างข้อมูล patient
+    await db.query(
+      `INSERT INTO patients (
+        user_id, pre_name, first_name, last_name, gender, birth_date, phone, email, 
+        address, race, nationality, religion, drug_allergy
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         userId, pre_name, first_name, last_name, gender, birth_date, phone, email,
         address, race, nationality, religion, drug_allergy || 'ไม่มี'
-      ];
+      ]
+    );
 
-      db.run(patientSql, patientParams, (err) => {
-        if (err) {
-          return renderError('เกิดข้อผิดพลาดในการสร้างข้อมูลผู้ป่วย');
-        }
+    // สำเร็จ → redirect
+    if (from === 'patients') return res.redirect('/');
+    res.redirect('/login?success=registration_successful');
 
-        // Check where to redirect
-        if (from === 'patients') {
-          return res.redirect('/');
-        }
-        res.redirect('/login?success=registration_successful');
-      });
-    });
-  } catch (error) {
+  } catch (err) {
+    console.error('Registration error:', err);
     renderError('เกิดข้อผิดพลาดของเซิร์ฟเวอร์');
   }
 });
 
-// Dentist Registration
+// ============================================================================
+// 🧩 Dentist Registration
+// ============================================================================
 router.get('/dentist/register', (req, res) => {
   res.render('dentists/register', { message: null });
 });
@@ -89,48 +91,54 @@ router.post('/dentist/register', async (req, res) => {
   } = req.body;
 
   const renderError = (message) => {
-    res.render('dentist/register', { message });
+    res.render('dentists/register', { message });
   };
 
   if (password !== confirm_password) {
     return renderError('รหัสผ่านไม่ตรงกัน');
   }
-  if (!email) { // Added email check
+  if (!email) {
     return renderError('กรุณากรอกอีเมล');
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const userSql = `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'dentist')`;
-    db.run(userSql, [citizen_id, hashedPassword], function (err) {
-      if (err) {
-        return renderError(err.code === 'SQLITE_CONSTRAINT' ? 'เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว' : 'เกิดข้อผิดพลาดในการสร้างบัญชีผู้ใช้');
-      }
+    // ตรวจซ้ำ
+    const [existing] = await db.query('SELECT id FROM users WHERE citizen_id = ?', [citizen_id]);
+    if (existing.length > 0) {
+      return renderError('เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนแล้ว');
+    }
 
-      const userId = this.lastID;
-      const dentistSql = `
-        INSERT INTO dentists (user_id, license_number, pre_name, first_name, last_name, phone, email, specialty)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      const dentistParams = [userId, license_number, pre_name, first_name, last_name, phone, email, specialty || null];
+    // Insert user
+    const [userResult] = await db.query(
+      `INSERT INTO users (citizen_id, password, role) VALUES (?, ?, 'dentist')`,
+      [citizen_id, hashedPassword]
+    );
+    const userId = userResult.insertId;
 
-      db.run(dentistSql, dentistParams, function (err) {
-        if (err) {
-          if (err.code === 'SQLITE_CONSTRAINT') {
-            return renderError('ข้อมูลที่กรอก (เช่น เลขใบประกอบ, อีเมล) อาจซ้ำกับที่มีในระบบ');
-          }
-          return renderError('เกิดข้อผิดพลาดในการบันทึกข้อมูลทันตแพทย์');
-        }
-        res.redirect('/login?success=dentist_registration_successful');
-      });
-    });
-  } catch (error) {
-    renderError('เกิดข้อผิดพลาดของเซิร์ฟเวอร์');
+    // Insert dentist
+    await db.query(
+      `INSERT INTO dentists (
+        user_id, license_number, pre_name, first_name, last_name, phone, email, specialty
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, license_number, pre_name, first_name, last_name, phone, email, specialty || null]
+    );
+
+    res.redirect('/login?success=dentist_registration_successful');
+
+  } catch (err) {
+    console.error('Dentist register error:', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return renderError('ข้อมูลที่กรอก (เช่น เลขใบประกอบ หรืออีเมล) อาจซ้ำกับที่มีในระบบ');
+    }
+    renderError('เกิดข้อผิดพลาดในการลงทะเบียน');
   }
 });
 
-// Login
+// ============================================================================
+// 🧩 Login
+// ============================================================================
 router.get('/login', (req, res) => {
   const { success } = req.query;
   let message = null;
@@ -142,41 +150,48 @@ router.get('/login', (req, res) => {
   res.render('login', { title: 'เข้าสู่ระบบ | Dentalcare Clinic', message });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { citizen_id, password } = req.body;
 
-  db.get("SELECT * FROM users WHERE citizen_id = ? LIMIT 1", [citizen_id], (err, user) => {
-    if (err || !user) {
+  try {
+    const [rows] = await db.query('SELECT * FROM users WHERE citizen_id = ? LIMIT 1', [citizen_id]);
+    const user = rows[0];
+
+    if (!user) {
       return res.render('login', { title: 'เข้าสู่ระบบ', message: 'เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err || !isMatch) {
-        return res.render('login', { title: 'เข้าสู่ระบบ', message: 'เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง' });
-      }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.render('login', { title: 'เข้าสู่ระบบ', message: 'เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง' });
+    }
 
-      const token = jwt.sign(
-        { id: user.id, citizen_id: user.citizen_id, role: user.role },
-        'secret-key',
-        { expiresIn: '1h' }
-      );
+    const token = jwt.sign(
+      { id: user.id, citizen_id: user.citizen_id, role: user.role },
+      'secret-key',
+      { expiresIn: '1h' }
+    );
 
-      res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 3600000 });
-
-      let redirectUrl;
-      if (user.role === 'dentist') {
-        redirectUrl = '/dentist/patients';
-      } else if (user.role === 'staff') {
-        redirectUrl = '/staff/patients'; // For Staff
-      } else {
-        redirectUrl = '/patient/dashboard'; // For User 
-      }
-      res.redirect(redirectUrl);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600000
     });
-  });
+
+    let redirectUrl = '/patient/dashboard';
+    if (user.role === 'dentist') redirectUrl = '/dentist/patients';
+    else if (user.role === 'staff') redirectUrl = '/staff/patients';
+
+    res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('Login error:', err);
+    res.render('login', { title: 'เข้าสู่ระบบ', message: 'เกิดข้อผิดพลาดของเซิร์ฟเวอร์' });
+  }
 });
 
-// Logout
+// ============================================================================
+// 🧩 Logout
+// ============================================================================
 router.get('/logout', (req, res) => {
   res.clearCookie('token');
   res.redirect('/login');

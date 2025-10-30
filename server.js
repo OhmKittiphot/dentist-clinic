@@ -1,4 +1,3 @@
-
 const path = require('path');
 const express = require('express');
 const dotenv = require('dotenv');
@@ -11,8 +10,10 @@ const cookieParser = require('cookie-parser');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const db = require('./db');
+const PORT = process.env.PORT || 80;
+
+// โหลด connection pool (MySQL RDS)
+const db = require('./db'); // <-- ใช้ mysql2/promise
 
 // --- Setup --- 
 app.set('view engine', 'ejs');
@@ -31,12 +32,23 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "https://code.jquery.com", "https://cdn.jsdelivr.net", "https://stackpath.bootstrapcdn.com"],
-      scriptSrcAttr: ["'unsafe-inline'"], 
-      styleSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
+      scriptSrc: [
+        "'self'",
+        (req, res) => `'nonce-${res.locals.nonce}'`,
+        "https://code.jquery.com",
+        "https://cdn.jsdelivr.net",
+        "https://stackpath.bootstrapcdn.com"
+      ],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: [
+        "'self'",
+        "https://stackpath.bootstrapcdn.com",
+        "https://cdnjs.cloudflare.com",
+        "'unsafe-inline'"
+      ],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", "http://localhost:3000"], 
-      connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:", "http://localhost:3000"],
+      connectSrc: ["'self'", "https://stackpath.bootstrapcdn.com", "https://cdn.jsdelivr.net"]
     },
   },
 }));
@@ -45,7 +57,7 @@ app.use(compression());
 // Static assets (must be before authentication)
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// Core
+// Core middlewares
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -67,17 +79,18 @@ app.get('/', (req, res) => {
 
 // Terms of Service Page
 app.get('/terms', (req, res) => {
-    res.render('terms');
+  res.render('terms');
 });
 
 // Debug route to list all users (for development only)
-app.get('/debug-users', (req, res) => {
-  db.all("SELECT id, citizen_id, role, password FROM users", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+app.get('/debug-users', async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT id, citizen_id, role, password FROM users");
     res.json(rows);
-  });
+  } catch (err) {
+    console.error("DB error:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Authentication routes (login, register, logout)
@@ -86,27 +99,26 @@ app.use('/dentist', authenticateToken, dentRouter);
 app.use('/staff', authenticateToken, staffRouter);
 app.use('/patient', authenticateToken, pantRouter);
 
-
-
+// 404 handler
 app.use((req, res) => res.status(404).send('Not Found'));
+
+// Error handler
 app.use((err, req, res, next) => { 
   console.error(err.stack); 
   res.status(500).send('Server Error'); 
 });
 
-// เพิ่มใน app.js หรือไฟล์หลัก
+// Helper function for EJS templates
 app.locals.getStatusText = function(status) {
-    const statusMap = {
-        'PENDING': 'รอการยืนยัน',
-        'CONFIRMED': 'ยืนยันแล้ว', 
-        'COMPLETED': 'เสร็จสิ้น',
-        'CANCELLED': 'ยกเลิก',
-        'NEW': 'ใหม่'
-    };
-    return statusMap[status] || status;
+  const statusMap = {
+    'PENDING': 'รอการยืนยัน',
+    'CONFIRMED': 'ยืนยันแล้ว',
+    'COMPLETED': 'เสร็จสิ้น',
+    'CANCELLED': 'ยกเลิก',
+    'NEW': 'ใหม่'
+  };
+  return statusMap[status] || status;
 };
 
-
-
 // --- Server Start ---
-app.listen(PORT, () => console.log(`Server running: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running: http://localhost:${PORT}`));
