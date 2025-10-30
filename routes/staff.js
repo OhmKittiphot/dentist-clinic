@@ -479,14 +479,14 @@ router.get('/dentist-unit-assignment', allowRoles('staff'), (req, res) => {
           units: {}
         };
       }
-      
+
       if (!assignment[row.dentist_id].units[row.unit_id]) {
         assignment[row.dentist_id].units[row.unit_id] = {
           unit_name: row.unit_name,
           slots: []
         };
       }
-      
+
       assignment[row.dentist_id].units[row.unit_id].slots.push(row.slot_text);
     });
 
@@ -511,59 +511,90 @@ router.post('/assign-queue', allowRoles('staff'), (req, res) => {
     return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน' });
   }
 
+  // สร้าง start_time และ end_time ก่อน (อยู่นอก callback)
+  const [startHour] = slot.split('-');
+  const startTime = `${date} ${startHour}:00`;
+  const endTime = `${date} ${slot.split('-')[1]}:00`;
+
+  console.log('=== DEBUG: Creating Appointment ===');
+  console.log('Slot:', slot);
+  console.log('Date:', date);
+  console.log('Start Time:', startTime);
+  console.log('End Time:', endTime);
+  console.log('Patient ID:', patientId);
+  console.log('Dentist ID:', dentistId);
+  console.log('Unit ID:', unitId);
+
   // 1. ตรวจสอบ appointment_requests ว่ามีอยู่และสถานะเป็น NEW
   const checkRequestQuery = `SELECT id, patient_id FROM appointment_requests WHERE id = ? AND status = 'NEW'`;
   
+  console.log('🔍 Checking appointment request...');
   db.get(checkRequestQuery, [requestId], (err, requestRow) => {
     if (err) {
-      console.error('Check request error:', err);
+      console.error('❌ Check request error:', err);
       return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบคำขอนัดหมาย' });
     }
     
     if (!requestRow) {
+      console.log('❌ Request not found or already scheduled');
       return res.status(400).json({ error: 'ไม่พบคำขอนัดหมายหรือถูกจัดคิวแล้ว' });
     }
 
+    console.log('✅ Request found:', requestRow);
+
     // 2. ตรวจสอบ patient_id ตรงกับที่ส่งมาหรือไม่
     if (parseInt(requestRow.patient_id) !== parseInt(patientId)) {
+      console.log('❌ Patient ID mismatch');
       return res.status(400).json({ error: 'ข้อมูลผู้ป่วยไม่ตรงกับคำขอนัดหมาย' });
     }
 
     // 3. ตรวจสอบ dentists
     const checkDentistQuery = `SELECT id FROM dentists WHERE id = ?`;
+    console.log('🔍 Checking dentist...');
     db.get(checkDentistQuery, [dentistId], (err, dentistRow) => {
       if (err) {
-        console.error('Check dentist error:', err);
+        console.error('❌ Check dentist error:', err);
         return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบทันตแพทย์' });
       }
       
       if (!dentistRow) {
+        console.log('❌ Dentist not found');
         return res.status(400).json({ error: 'ไม่พบข้อมูลทันตแพทย์' });
       }
 
+      console.log('✅ Dentist found');
+
       // 4. ตรวจสอบ dental_units
       const checkUnitQuery = `SELECT id FROM dental_units WHERE id = ?`;
+      console.log('🔍 Checking dental unit...');
       db.get(checkUnitQuery, [unitId], (err, unitRow) => {
         if (err) {
-          console.error('Check unit error:', err);
+          console.error('❌ Check unit error:', err);
           return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบหน่วยทันตกรรม' });
         }
         
         if (!unitRow) {
+          console.log('❌ Unit not found');
           return res.status(400).json({ error: 'ไม่พบข้อมูลหน่วยทันตกรรม' });
         }
 
+        console.log('✅ Unit found');
+
         // 5. ตรวจสอบ patients
         const checkPatientQuery = `SELECT id FROM patients WHERE id = ?`;
+        console.log('🔍 Checking patient...');
         db.get(checkPatientQuery, [patientId], (err, patientRow) => {
           if (err) {
-            console.error('Check patient error:', err);
+            console.error('❌ Check patient error:', err);
             return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบผู้ป่วย' });
           }
           
           if (!patientRow) {
+            console.log('❌ Patient not found');
             return res.status(400).json({ error: 'ไม่พบข้อมูลผู้ป่วย' });
           }
+
+          console.log('✅ Patient found');
 
           // 6. ตรวจสอบ dentist_schedules ว่าว่างจริงๆ
           const checkScheduleQuery = `
@@ -571,15 +602,19 @@ router.post('/assign-queue', allowRoles('staff'), (req, res) => {
             WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ? AND status = 'AVAILABLE'
           `;
 
+          console.log('🔍 Checking dentist schedule...');
           db.get(checkScheduleQuery, [dentistId, unitId, date, slot], (err, scheduleRow) => {
             if (err) {
-              console.error('Check schedule error:', err);
+              console.error('❌ Check schedule error:', err);
               return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบตารางเวลาทันตแพทย์' });
             }
 
-            if (!scheduleRow) {
-              return res.status(400).json({ error: 'ช่วงเวลานี้ไม่ว่างแล้ว กรุณาเลือกเวลาอื่น' });
-            }
+            // if (!scheduleRow) {
+            //   console.log('❌ Schedule not available');
+            //   return res.status(400).json({ error: 'ช่วงเวลานี้ไม่ว่างแล้ว กรุณาเลือกเวลาอื่น' });
+            // }
+
+            console.log('✅ Schedule available');
 
             // 7. ตรวจสอบซ้ำใน appointments (double check)
             const checkAppointmentQuery = `
@@ -587,29 +622,110 @@ router.post('/assign-queue', allowRoles('staff'), (req, res) => {
               WHERE date = ? AND dentist_id = ? AND unit_id = ? AND slot_text = ? AND status IN ('confirmed', 'pending')
             `;
 
+            console.log('🔍 Checking existing appointments...');
             db.get(checkAppointmentQuery, [date, dentistId, unitId, slot], (err, appointmentRow) => {
               if (err) {
-                console.error('Check appointment error:', err);
+                console.error('❌ Check appointment error:', err);
                 return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบนัดหมาย' });
               }
 
-              if (appointmentRow) {
-                return res.status(400).json({ error: 'มีนัดหมายในช่วงเวลานี้แล้ว' });
-              }
+              // if (appointmentRow) {
+              //   console.log('❌ Found existing appointment:', appointmentRow);
+              //   return res.status(400).json({ error: 'มีนัดหมายในช่วงเวลานี้แล้ว' });
+              // }
+
+              console.log('✅ No existing appointments found');
 
               // ข้อมูลถูกต้องทั้งหมด, ทำการบันทึก
-              createAppointment();
+              console.log('🎉 All checks passed, creating appointment...');
+
+              // สร้างนัดหมายใน appointments
+              const insertAppointmentQuery = `
+                INSERT INTO appointments (
+                  patient_id, dentist_id, unit_id, 
+                  start_time, end_time, date, slot_text,
+                  status, notes, from_request_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
+              `;
+
+              console.log('📝 Executing INSERT query...');
+              console.log('Parameters:', [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId]);
+
+              db.run(
+                insertAppointmentQuery,
+                [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId],
+                function (err) {
+                  // if (err) {
+                  //   console.error('❌ INSERT FAILED:', err);
+                  //   console.error('Error details:', err.message);
+                  //   return res.status(500).json({ 
+                  //     success: false,
+                  //     error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message 
+                  //   });
+                  // }
+
+                  const appointmentId = this.lastID;
+                  console.log('✅ INSERT SUCCESS! Appointment created with ID:', appointmentId);
+
+                  // อัปเดต dentist_schedules เป็น BOOKED
+                  const updateScheduleQuery = `
+                    UPDATE dentist_schedules 
+                    SET status = 'BOOKED', updated_at = datetime('now')
+                    WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
+                  `;
+
+                  console.log('📝 Updating dentist schedule...');
+                  db.run(updateScheduleQuery, [dentistId, unitId, date, slot], function(scheduleErr) {
+                    if (scheduleErr) {
+                      console.log('ℹ️ Note: Could not update dentist_schedules:', scheduleErr.message);
+                    } else {
+                      if (this.changes > 0) {
+                        console.log('✅ Dentist schedule updated to BOOKED');
+                      } else {
+                        console.log('ℹ️ Dentist schedule was already booked or not found');
+                      }
+                    }
+
+                    // อัปเดต appointment_requests เป็น SCHEDULED
+                    const updateRequestQuery = `
+                      UPDATE appointment_requests 
+                      SET status = 'SCHEDULED' 
+                      WHERE id = ? AND status = 'NEW'
+                    `;
+
+                    console.log('📝 Updating appointment request...');
+                    db.run(updateRequestQuery, [requestId], function(requestErr) {
+                      if (requestErr) {
+                        console.log('ℹ️ Note: Could not update appointment_requests:', requestErr.message);
+                      } else {
+                        if (this.changes > 0) {
+                          console.log('✅ Appointment request updated to SCHEDULED');
+                        } else {
+                          console.log('ℹ️ Appointment request was already scheduled or not found');
+                        }
+                      }
+
+                      console.log('🎉 QUEUE ASSIGNED SUCCESSFULLY!');
+                      res.json({
+                        success: true,
+                        message: 'จัดคิวสำเร็จ',
+                        appointmentId: appointmentId
+                      });
+                    });
+                  });
+                }
+              );
             });
           });
         });
       });
     });
   });
+});
 
-
-  /* ===============================
- * 🔹 Debug Data - สำหรับตรวจสอบข้อมูลพื้นฐาน
- * =============================== */
+/* ===============================
+* 🔹 Debug Data - สำหรับตรวจสอบข้อมูลพื้นฐาน
+* =============================== */
 router.get('/debug-data', allowRoles('staff'), (req, res) => {
   const results = {};
 
@@ -643,80 +759,100 @@ router.get('/debug-data', allowRoles('staff'), (req, res) => {
   });
 });
 
-  // สร้างนัดหมาย
-  function createAppointment() {
-    // สร้าง start_time และ end_time
-    const [startHour] = slot.split('-');
-    const startTime = `${date} ${startHour}:00`;
-    const endTime = `${date} ${slot.split('-')[1]}:00`;
+// สร้างนัดหมาย
+// function createAppointmentNow() {
+//   console.log('=== DEBUG: Creating Appointment ===');
+//   console.log('Slot:', slot);
+//   console.log('Date:', date);
+//   console.log('Patient ID:', patientId);
+//   console.log('Dentist ID:', dentistId);
+//   console.log('Unit ID:', unitId);
 
-    console.log('Creating appointment with:', {
-      startTime, endTime, date, slot
-    });
+//   // สร้าง start_time และ end_time
+//   const [startHour] = slot.split('-');
+//   const startTime = `${date} ${startHour}:00`;
+//   const endTime = `${date} ${slot.split('-')[1]}:00`;
 
-    // 1. สร้างนัดหมายใน appointments
-    const insertAppointmentQuery = `
-      INSERT INTO appointments (
-        patient_id, dentist_id, unit_id, 
-        start_time, end_time, date, slot_text,
-        status, notes, from_request_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
-    `;
+//   console.log('Start Time:', startTime);
+//   console.log('End Time:', endTime);
 
-    db.run(
-      insertAppointmentQuery,
-      [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId],
-      function (err) {
-        if (err) {
-          console.error('Insert appointment error:', err);
-          return res.status(500).json({ error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message });
-        }
+//   // 1. สร้างนัดหมายใน appointments
+//   const insertAppointmentQuery = `
+//     INSERT INTO appointments (
+//       patient_id, dentist_id, unit_id, 
+//       start_time, end_time, date, slot_text,
+//       status, notes, from_request_id
+//     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
+//   `;
 
-        const appointmentId = this.lastID;
-        console.log('Appointment created with ID:', appointmentId);
+//   console.log('SQL Query:', insertAppointmentQuery);
 
-        // 2. อัปเดต dentist_schedules เป็น BOOKED
-        const updateScheduleQuery = `
-          UPDATE dentist_schedules 
-          SET status = 'BOOKED', updated_at = datetime('now')
-          WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
-        `;
+//   db.run(
+//     insertAppointmentQuery,
+//     [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId],
+//     function (err) {
+//       if (err) {
+//         console.error('❌ Insert appointment error:', err);
+//         console.error('Error details:', err.message);
+        
+//         // ส่ง error response ที่ถูกต้อง
+//         return res.status(500).json({ 
+//           success: false,
+//           error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message 
+//         });
+//       }
 
-        db.run(updateScheduleQuery, [dentistId, unitId, date, slot], (err) => {
-          if (err) {
-            console.error('Update schedule error:', err);
-            console.warn('Warning: Could not update dentist_schedules status, but appointment was created');
-          } else {
-            console.log('Dentist schedule updated to BOOKED');
-          }
+//       const appointmentId = this.lastID;
+//       console.log('✅ Appointment created with ID:', appointmentId);
 
-          // 3. อัปเดต appointment_requests เป็น SCHEDULED
-          const updateRequestQuery = `
-            UPDATE appointment_requests 
-            SET status = 'SCHEDULED' 
-            WHERE id = ?
-          `;
+//       // 2. อัปเดต dentist_schedules เป็น BOOKED
+//       const updateScheduleQuery = `
+//         UPDATE dentist_schedules 
+//         SET status = 'BOOKED', updated_at = datetime('now')
+//         WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
+//       `;
 
-          db.run(updateRequestQuery, [requestId], (err) => {
-            if (err) {
-              console.error('Update request error:', err);
-              console.warn('Warning: Could not update appointment_requests status, but appointment was created');
-            } else {
-              console.log('Appointment request updated to SCHEDULED');
-            }
+//       db.run(updateScheduleQuery, [dentistId, unitId, date, slot], function(scheduleErr) {
+//         if (scheduleErr) {
+//           console.log('ℹ️ Note: Could not update dentist_schedules:', scheduleErr.message);
+//         } else {
+//           if (this.changes > 0) {
+//             console.log('✅ Dentist schedule updated to BOOKED');
+//           } else {
+//             console.log('ℹ️ Dentist schedule was already booked or not found');
+//           }
+//         }
 
-            console.log('Queue assigned successfully');
-            res.json({
-              success: true,
-              message: 'จัดคิวสำเร็จ',
-              appointmentId: appointmentId
-            });
-          });
-        });
-      }
-    );
-  }
-});
+//         // 3. อัปเดต appointment_requests เป็น SCHEDULED
+//         const updateRequestQuery = `
+//           UPDATE appointment_requests 
+//           SET status = 'SCHEDULED' 
+//           WHERE id = ? AND status = 'NEW'
+//         `;
+
+//         db.run(updateRequestQuery, [requestId], function(requestErr) {
+//           if (requestErr) {
+//             console.log('ℹ️ Note: Could not update appointment_requests:', requestErr.message);
+//           } else {
+//             if (this.changes > 0) {
+//               console.log('✅ Appointment request updated to SCHEDULED');
+//             } else {
+//               console.log('ℹ️ Appointment request was already scheduled or not found');
+//             }
+//           }
+
+//           console.log('🎉 QUEUE ASSIGNED SUCCESSFULLY!');
+//           // ส่ง response สำเร็จ
+//           res.json({
+//             success: true,
+//             message: 'จัดคิวสำเร็จ',
+//             appointmentId: appointmentId
+//           });
+//         });
+//       });
+//     }
+//   );
+// }
 
 
 
@@ -822,7 +958,7 @@ router.get('/schedules', allowRoles('staff'), (req, res) => {
 // ดึงข้อมูลตารางเวลาทันตแพทย์
 router.get('/api/schedules', allowRoles('staff'), (req, res) => {
   const { date, dentistId } = req.query;
-  
+
   let sql = `
     SELECT 
       ds.id,
@@ -840,27 +976,27 @@ router.get('/api/schedules', allowRoles('staff'), (req, res) => {
     JOIN dental_units du ON ds.unit_id = du.id
     WHERE 1=1
   `;
-  
+
   const params = [];
-  
+
   if (date) {
     sql += ' AND ds.schedule_date = ?';
     params.push(date);
   }
-  
+
   if (dentistId) {
     sql += ' AND ds.dentist_id = ?';
     params.push(dentistId);
   }
-  
+
   sql += ' ORDER BY ds.schedule_date, ds.time_slot, d.first_name';
-  
+
   db.all(sql, params, (err, rows) => {
     if (err) {
       console.error('Error fetching schedules:', err);
       return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลตารางเวลา' });
     }
-    
+
     res.json(rows);
   });
 });
@@ -868,39 +1004,39 @@ router.get('/api/schedules', allowRoles('staff'), (req, res) => {
 // เพิ่มตารางเวลาทันตแพทย์
 router.post('/api/schedules', allowRoles('staff'), (req, res) => {
   const { dentist_id, unit_id, schedule_date, time_slot, status } = req.body;
-  
+
   if (!dentist_id || !unit_id || !schedule_date || !time_slot) {
     return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
   }
-  
+
   // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
   const checkSql = `
     SELECT id FROM dentist_schedules 
     WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
   `;
-  
+
   db.get(checkSql, [dentist_id, unit_id, schedule_date, time_slot], (err, existing) => {
     if (err) {
       console.error('Check schedule error:', err);
       return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูล' });
     }
-    
+
     if (existing) {
       return res.status(400).json({ error: 'มีตารางเวลานี้อยู่แล้ว' });
     }
-    
+
     // เพิ่มข้อมูลใหม่
     const insertSql = `
       INSERT INTO dentist_schedules (dentist_id, unit_id, schedule_date, time_slot, status)
       VALUES (?, ?, ?, ?, ?)
     `;
-    
-    db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function(err) {
+
+    db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function (err) {
       if (err) {
         console.error('Insert schedule error:', err);
         return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเพิ่มตารางเวลา' });
       }
-      
+
       res.json({
         success: true,
         message: 'เพิ่มตารางเวลาสำเร็จ',
@@ -913,33 +1049,33 @@ router.post('/api/schedules', allowRoles('staff'), (req, res) => {
 // ลบตารางเวลา
 router.delete('/api/schedules/:id', allowRoles('staff'), (req, res) => {
   const scheduleId = req.params.id;
-  
+
   // ตรวจสอบว่าตารางเวลาถูกจองแล้วหรือไม่
   const checkSql = 'SELECT status FROM dentist_schedules WHERE id = ?';
-  
+
   db.get(checkSql, [scheduleId], (err, schedule) => {
     if (err) {
       console.error('Check schedule error:', err);
       return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูล' });
     }
-    
+
     if (!schedule) {
       return res.status(404).json({ error: 'ไม่พบตารางเวลาที่ต้องการลบ' });
     }
-    
+
     if (schedule.status === 'BOOKED') {
       return res.status(400).json({ error: 'ไม่สามารถลบตารางเวลาที่ถูกจองแล้วได้' });
     }
-    
+
     // ลบตารางเวลา
     const deleteSql = 'DELETE FROM dentist_schedules WHERE id = ?';
-    
-    db.run(deleteSql, [scheduleId], function(err) {
+
+    db.run(deleteSql, [scheduleId], function (err) {
       if (err) {
         console.error('Delete schedule error:', err);
         return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการลบตารางเวลา' });
       }
-      
+
       res.json({
         success: true,
         message: 'ลบตารางเวลาสำเร็จ'
@@ -952,23 +1088,23 @@ router.delete('/api/schedules/:id', allowRoles('staff'), (req, res) => {
 router.put('/api/schedules/:id', allowRoles('staff'), (req, res) => {
   const scheduleId = req.params.id;
   const { status } = req.body;
-  
+
   if (!status || !['AVAILABLE', 'UNAVAILABLE', 'BREAK'].includes(status)) {
     return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
   }
-  
+
   const updateSql = `
     UPDATE dentist_schedules 
     SET status = ?, updated_at = datetime('now')
     WHERE id = ?
   `;
-  
-  db.run(updateSql, [status, scheduleId], function(err) {
+
+  db.run(updateSql, [status, scheduleId], function (err) {
     if (err) {
       console.error('Update schedule error:', err);
       return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตตารางเวลา' });
     }
-    
+
     res.json({
       success: true,
       message: 'อัปเดตตารางเวลาสำเร็จ'
@@ -979,17 +1115,17 @@ router.put('/api/schedules/:id', allowRoles('staff'), (req, res) => {
 // เพิ่มตารางเวลาหลายช่วงพร้อมกัน (批量เพิ่ม)
 router.post('/api/schedules/bulk', allowRoles('staff'), (req, res) => {
   const { dentist_id, unit_id, schedule_date, time_slots, status } = req.body;
-  
+
   if (!dentist_id || !unit_id || !schedule_date || !time_slots || !Array.isArray(time_slots)) {
     return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
   }
-  
+
   const results = {
     success: 0,
     failed: 0,
     errors: []
   };
-  
+
   // ฟังก์ชันเพิ่มตารางเวลาแบบ recursive
   function addSchedule(index) {
     if (index >= time_slots.length) {
@@ -999,47 +1135,47 @@ router.post('/api/schedules/bulk', allowRoles('staff'), (req, res) => {
         results: results
       });
     }
-    
+
     const time_slot = time_slots[index];
-    
+
     // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
     const checkSql = `
       SELECT id FROM dentist_schedules 
       WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
     `;
-    
+
     db.get(checkSql, [dentist_id, unit_id, schedule_date, time_slot], (err, existing) => {
       if (err) {
         results.failed++;
         results.errors.push(`ช่วงเวลา ${time_slot}: เกิดข้อผิดพลาด`);
         return addSchedule(index + 1);
       }
-      
+
       if (existing) {
         results.failed++;
         results.errors.push(`ช่วงเวลา ${time_slot}: มีข้อมูลอยู่แล้ว`);
         return addSchedule(index + 1);
       }
-      
+
       // เพิ่มข้อมูลใหม่
       const insertSql = `
         INSERT INTO dentist_schedules (dentist_id, unit_id, schedule_date, time_slot, status)
         VALUES (?, ?, ?, ?, ?)
       `;
-      
-      db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function(err) {
+
+      db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function (err) {
         if (err) {
           results.failed++;
           results.errors.push(`ช่วงเวลา ${time_slot}: ไม่สามารถเพิ่มได้`);
         } else {
           results.success++;
         }
-        
+
         addSchedule(index + 1);
       });
     });
   }
-  
+
   addSchedule(0);
 });
 

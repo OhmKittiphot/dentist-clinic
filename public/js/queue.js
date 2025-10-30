@@ -720,5 +720,77 @@ btnAssign.addEventListener('click', async () => {
   }
 });
 
+btnAssign.addEventListener('click', async () => {
+  if(!selectedQueueId || !selectedSlot) return;
+  
+  const item = queueItems.find(q => q.id === selectedQueueId);
+  const selectedDentist = denSel.value;
+  const selectedUnit = unitSel.value;
+
+  if (!item || !selectedDentist || !selectedUnit) return;
+
+  console.log('Attempting to assign:', {
+    item, selectedDentist, selectedUnit, selectedSlot
+  });
+
+  // ส่งข้อมูลไปจัดคิว
+  const payload = {
+    requestId: item.id, 
+    patientId: item.patient_id, 
+    dentistId: selectedDentist, 
+    unitId: selectedUnit, 
+    date: item.date, 
+    slot: selectedSlot,
+    serviceDescription: item.service_description 
+  };
+  
+  console.log('Assigning queue with payload:', payload);
+  
+  try {
+    btnAssign.disabled = true;
+    btnAssign.textContent = 'กำลังจัดคิว...';
+
+    const resp = await fetch('/staff/assign-queue', {
+      method: 'POST', 
+      headers: {'Content-Type': 'application/json'}, 
+      body: JSON.stringify(payload)
+    });
+    
+    // ตรวจสอบว่า response ok หรือไม่
+    if (!resp.ok) {
+      const errorData = await resp.json();
+      throw new Error(errorData.error || `HTTP error! status: ${resp.status}`);
+    }
+    
+    const result = await resp.json();
+    
+    // ตรวจสอบว่า server ตอบกลับ success หรือไม่
+    if (!result.success) {
+      throw new Error(result.error || 'จัดคิวไม่สำเร็จ');
+    }
+    
+    alert('จัดคิวสำเร็จ!'); 
+    
+    // โหลดข้อมูลใหม่
+    await loadDataForDate(); 
+    
+    // รีเซ็ต form
+    cancelSelection();
+    
+  } catch (error) {
+    console.error('Assign error:', error);
+    
+    // แสดง error message ที่เฉพาะเจาะจงมากขึ้น
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+    } else {
+      alert('เกิดข้อผิดพลาด: ' + error.message);
+    }
+  } finally {
+    btnAssign.disabled = false;
+    btnAssign.textContent = 'ยืนยันการจัดคิว';
+  }
+});
+
 // Initialize
 initPage();
