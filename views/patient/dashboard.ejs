@@ -1,41 +1,75 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <%- include('../partials/head') %>
-    <title>แดชบอร์ดผู้ป่วย</title>
-    <link rel="stylesheet" href="/public/css/main.css">
-    <link rel="stylesheet" href="/public/css/patient.css">
+  <%- include('../partials/head') %>
+  <title>แดชบอร์ดผู้ป่วย</title>
+  <link rel="stylesheet" href="/public/css/main.css">
+  <link rel="stylesheet" href="/public/css/patient.css">
 </head>
 <body>
-    <div class="app">
-        <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'dashboard' }) %>
-        <main class="main-content">
-            <h1>ยินดีต้อนรับสู่แดชบอร์ดของคุณ</h1>
+  <div class="app">
+    <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'dashboard' }) %>
 
-            <div class="card">
-                <h2>การนัดหมายครั้งถัดไป</h2>
-                <% if (appointment) { %>
-                    <p><strong>วันที่:</strong> <%= new Date(appointment.visit_date).toLocaleDateString('th-TH') %></p>
-                    <p><strong>ทันตแพทย์:</strong> <%= appointment.doctor_name %></p>
-                    <a href="/patient/patient_appointment" class="btn">ดูการนัดหมายทั้งหมด</a>
-                <% } else { %>
-                    <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
-                    <a href="/patient/patient_appointment" class="btn">ดูการนัดหมายทั้งหมด</a>
-                <% } %>
-            </div>
+    <main class="main-content">
+      <h1>ยินดีต้อนรับสู่แดชบอร์ดของคุณ</h1>
 
-            <div class="card">
-                <h2>การชำระเงิน</h2>
-                <% if (payment) { %>
-                    <p><strong>ยอดที่ต้องชำระ:</strong> <%= payment.amount %> บาท</p>
-                    <p><strong>สถานะ:</strong> <%= payment.status === 'pending' ? 'ยังไม่ชำระ' : 'ชำระแล้ว' %></p>
-                    <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
-                <% } else { %>
-                    <p>คุณไม่มีบิลที่ต้องชำระ</p>
-                    <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
-                <% } %>
-            </div>
-        </main>
-    </div>
+      <!-- การนัดหมายครั้งถัดไป -->
+      <div class="card">
+        <h2>การนัดหมายครั้งถัดไป</h2>
+        <% if (appointment) {
+             const start = new Date(appointment.start_time);
+             const end   = new Date(appointment.end_time);
+             const dateTh = start.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+             const timeRange = `${start.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}`;
+             const statusMap = {
+               pending: 'รอยืนยัน',
+               confirmed: 'ยืนยันแล้ว',
+               checked_in: 'เช็คอินแล้ว',
+               done: 'เสร็จสิ้น',
+               cancelled: 'ยกเลิก',
+               no_show: 'ไม่มา'
+             };
+        %>
+          <% if (appointment.is_request) { %>
+            <p style="margin:0 0 8px 0; color:#777;">(คำขอนัด ยังไม่ถูกจัดคิวโดยคลินิก)</p>
+          <% } %>
+          <p><strong>วันที่:</strong> <%= dateTh %></p>
+          <p><strong>เวลา:</strong> <%= timeRange %></p>
+          <p><strong>ทันตแพทย์:</strong> <%= appointment.dentist_name || (appointment.is_request ? 'รอจัดคิว' : 'ไม่ระบุ') %></p>
+          <p><strong>ยูนิต/ห้อง:</strong> <%= appointment.unit_name || (appointment.is_request ? 'รอจัดคิว' : '-') %></p>
+          <p>
+            <strong>สถานะ:</strong>
+            <span class="chip <%= appointment.status %>"><%= statusMap[appointment.status] || appointment.status %></span>
+          </p>
+          <% if (appointment.notes) { %>
+            <p><strong>หมายเหตุ:</strong> <%= appointment.notes %></p>
+          <% } %>
+
+          <% if (appointment.is_request) { %>
+          <% } else { %>
+            <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
+          <% } %>
+        <% } else { %>
+          <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
+          <a href="/patient/patient_appointment" class="btn">ขอรับบริการ/จองนัดหมาย</a>
+        <% } %>
+      </div>
+
+      <!-- การชำระเงิน -->
+      <div class="card">
+        <h2>การชำระเงิน</h2>
+        <% if (payment) { %>
+          <p><strong>ยอดที่ต้องชำระ:</strong> 
+            <%= Number(payment.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท
+          </p>
+          <p><strong>สถานะ:</strong> <%= payment.status === 'pending' ? 'ยังไม่ชำระ' : 'ชำระแล้ว' %></p>
+          <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
+        <% } else { %>
+          <p>คุณไม่มีบิลที่ต้องชำระ</p>
+          <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
+        <% } %>
+      </div>
+    </main>
+  </div>
 </body>
 </html>

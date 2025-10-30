@@ -1,10 +1,10 @@
-// Patient
+// routes/patient.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { allowRoles } = require('../utils/auth');
 
-// ===== Middleware เหมือนเดิม =====
+/* ---------- เติม patient_id ลงใน req.user ---------- */
 const fetchPatientId = (req, res, next) => {
   if (!req.user || req.user.role !== 'patient') return next();
 
@@ -17,7 +17,7 @@ const fetchPatientId = (req, res, next) => {
       return res.status(500).send('Server Error');
     }
     if (!row) {
-      console.error(`No patient record found for user with user_id: ${userId}`);
+      console.error(`No patient record found for user_id: ${userId}`);
       return res.status(403).send('Access denied. No patient record associated with this account.');
     }
     req.user.patient_id = row.id;
@@ -25,51 +25,96 @@ const fetchPatientId = (req, res, next) => {
   });
 };
 
-// Apply middleware
 router.use(fetchPatientId);
 
-// ===== Dashboard & appointments (เหมือนเดิม) =====
+/* =========================================================================
+   DASHBOARD: นัดหมายครั้งถัดไป
+   ลำดับความสำคัญ:
+   1) ดึงจาก appointments (status: pending/confirmed)
+   2) ถ้าไม่เจอ ให้ fallback ไปดู appointment_requests ที่วันที่ >= วันนี้ (NEW/PENDING)
+   ========================================================================= */
 router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
   try {
     const patientId = req.user.patient_id;
     if (!patientId) return res.status(403).send('Could not identify patient account.');
 
-    const appointmentSql = `
-      SELECT * 
-      FROM visits 
-      WHERE patient_id = ? AND visit_date >= date('now')
-      ORDER BY visit_date ASC
+    // 1) หานัดจริงใน appointments
+    const apptSql = `
+      SELECT 
+        a.id,
+        a.start_time,
+        a.end_time,
+        a.status,
+        a.notes,
+        (d.first_name || ' ' || d.last_name) AS dentist_name,
+        du.unit_name AS unit_name,
+        0 AS is_request
+      FROM appointments a
+      JOIN dentists d        ON d.id = a.dentist_id
+      LEFT JOIN dental_units du ON du.id = a.unit_id
+      WHERE a.patient_id = ?
+        AND datetime(a.start_time) >= datetime('now')
+        AND UPPER(a.status) IN ('PENDING','CONFIRMED')
+      ORDER BY datetime(a.start_time) ASC
       LIMIT 1;
     `;
     const appointment = await new Promise((resolve, reject) => {
-      db.get(appointmentSql, [patientId], (err, row) => err ? reject(err) : resolve(row));
+      db.get(apptSql, [patientId], (err, row) => err ? reject(err) : resolve(row || null));
     });
 
-    if (appointment) {
-      const dentistSql = `SELECT (first_name || ' ' || last_name) as name FROM dentists WHERE user_id = ?`;
-      const doctor = await new Promise((resolve, reject) => {
-        db.get(dentistSql, [appointment.doctor_id], (err, row) => err ? reject(err) : resolve(row));
+    let appointmentOrRequest = appointment;
+
+    // 2) ถ้าไม่มีนัดจริง ให้ดูคำขอที่ยังไม่ถึงกำหนด (แสดงเป็น "รอยืนยัน")
+    if (!appointmentOrRequest) {
+      const reqSql = `
+        SELECT id, requested_date, requested_time_slot, treatment, notes, status
+        FROM appointment_requests
+        WHERE patient_id = ?
+          AND date(requested_date) >= date('now')
+          AND UPPER(COALESCE(status,'NEW')) IN ('NEW','PENDING')
+        ORDER BY date(requested_date) ASC, requested_time_slot ASC
+        LIMIT 1;
+      `;
+      const reqRow = await new Promise((resolve, reject) => {
+        db.get(reqSql, [patientId], (err, row) => err ? reject(err) : resolve(row || null));
       });
-      appointment.doctor_name = doctor ? doctor.name : 'Unknown Dentist';
+
+      if (reqRow) {
+        // แปลงเป็น object ที่หน้าจออ่านได้เหมือน appointments
+        // slot รูปแบบ "HH:MM-HH:MM"
+        const start = `${reqRow.requested_date} ${reqRow.requested_time_slot.substring(0,5)}:00`;
+        const end   = `${reqRow.requested_date} ${reqRow.requested_time_slot.substring(6,11)}:00`;
+        appointmentOrRequest = {
+          id: reqRow.id,
+          start_time: start,
+          end_time: end,
+          status: 'pending',          // แสดงเป็นรอยืนยัน
+          notes: reqRow.notes || `คำขอ: ${reqRow.treatment || ''}`,
+          dentist_name: null,         // ยังไม่ระบุ
+          unit_name: null,            // ยังไม่ระบุ
+          is_request: 1               // ธงไว้ให้ template แสดงข้อความพิเศษ
+        };
+      }
     }
 
+    // ยอดค้างชำระล่าสุด (ถ้ามี)
     const paymentSql = `
       SELECT p.*
       FROM payments p
       JOIN visits v ON p.visit_id = v.id
       WHERE v.patient_id = ? AND p.status = 'pending'
-      ORDER BY p.payment_date DESC
+      ORDER BY COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC
       LIMIT 1;
     `;
     const payment = await new Promise((resolve, reject) => {
-      db.get(paymentSql, [patientId], (err, row) => err ? reject(err) : resolve(row));
+      db.get(paymentSql, [patientId], (err, row) => err ? reject(err) : resolve(row || null));
     });
 
     res.render('patient/dashboard', {
       user: req.user,
       userRole: req.user.role,
       page: 'dashboard',
-      appointment,
+      appointment: appointmentOrRequest,
       payment
     });
   } catch (err) {
@@ -78,11 +123,12 @@ router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
   }
 });
 
+/* =================== หน้ารายการนัดหมายทั้งหมด (placeholder) =================== */
 router.get('/appointments', allowRoles('patient'), (req, res) => {
   res.send('<h1>หน้านี้ยังไม่เสร็จ</h1><a href="/patient/dashboard">กลับไปแดชบอร์ด</a>');
 });
 
-// ====== NEW: Payments list + Date filter ======
+/* =================== Payments list + Date filter =================== */
 router.get('/payments', allowRoles('patient'), async (req, res, next) => {
   try {
     const patientId = req.user.patient_id;
@@ -133,28 +179,26 @@ router.get('/payments', allowRoles('patient'), async (req, res, next) => {
   }
 });
 
-// ====== NEW: Pay a pending payment (Patient can mark as paid for own record) ======
+/* =================== ชำระเงิน (เปลี่ยนสถานะ) =================== */
 router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
   const paymentId = req.params.id;
   const patientId = req.user.patient_id;
 
-  // ตรวจสอบว่ารายการชำระเงินนี้เป็นของผู้ป่วยคนนี้จริง และยัง pending อยู่
   const checkSql = `
     SELECT p.id, p.status
     FROM payments p
     JOIN visits v ON p.visit_id = v.id
     WHERE p.id = ? AND v.patient_id = ?;
   `;
+
   db.get(checkSql, [paymentId, patientId], (err, row) => {
     if (err) return next(err);
     if (!row) return res.status(403).send('Forbidden: not your payment.');
     if (row.status === 'paid') {
-      // กลับไปพร้อมข้อความ
       const back = `/patient/payments?success=${encodeURIComponent('รายการนี้ชำระแล้วอยู่แล้ว')}`;
       return res.redirect(back);
     }
 
-    // อัปเดตเป็น paid + เวลาเดี๋ยวนี้
     const updSql = `
       UPDATE payments
       SET status = 'paid',
@@ -164,7 +208,6 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
     db.run(updSql, [paymentId], (err2) => {
       if (err2) return next(err2);
 
-      // รักษาค่า filter เดิมถ้ามี
       const q = [];
       if (req.query.date_from) q.push(`date_from=${encodeURIComponent(req.query.date_from)}`);
       if (req.query.date_to) q.push(`date_to=${encodeURIComponent(req.query.date_to)}`);
@@ -175,18 +218,16 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
   });
 });
 
-
+/* =================== ฟอร์มขอนัด (ผู้ป่วยส่งคำขอ) =================== */
 router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
   const userId = req.user.id;
-  
-  // ดึงข้อมูลผู้ป่วยจากตาราง patients โดยใช้ user_id
+
   const patientSql = `
     SELECT pre_name, first_name, last_name, phone, email 
     FROM patients 
     WHERE user_id = ?
   `;
 
-  // ดึงบริการจากตาราง procedure_codes
   const servicesSql = `
     SELECT code, description, default_price, category 
     FROM procedure_codes 
@@ -196,11 +237,8 @@ router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
   db.get(patientSql, [userId], (err, patient) => {
     if (err) {
       console.error('Error fetching patient data:', err);
-      // ถ้า error ก็ยังให้แสดงหน้าได้ แต่ไม่มีข้อมูล pre-filled
       return getServices(null);
     }
-
-    console.log('Patient data found:', patient);
     getServices(patient);
   });
 
@@ -211,7 +249,6 @@ router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
         services = [];
       }
 
-      // จัดกลุ่มบริการตาม category
       const servicesByCategory = {};
       services.forEach(service => {
         if (!servicesByCategory[service.category]) {
@@ -232,20 +269,11 @@ router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
   }
 });
 
-// POST /patient/appointment-request
+/* =================== ผู้ป่วยส่งคำขอนัด =================== */
 router.post('/appointment-request', allowRoles('patient'), (req, res) => {
-  console.log('POST /patient/appointment-request called with:', req.body);
-  
-  const {
-    requested_date,
-    requested_time_slot,
-    treatment,
-    notes
-  } = req.body;
+  const { requested_date, requested_time_slot, treatment, notes } = req.body;
 
-  // Validation
   if (!requested_date || !requested_time_slot || !treatment) {
-    console.error('Missing required fields:', { requested_date, requested_time_slot, treatment });
     return res.status(400).json({
       success: false,
       error: 'กรุณากรอกข้อมูลการนัดหมายให้ครบถ้วน'
@@ -253,23 +281,8 @@ router.post('/appointment-request', allowRoles('patient'), (req, res) => {
   }
 
   const userId = req.user.id;
-  if (!userId) {
-    console.error('No user_id found in request');
-    return res.status(400).json({
-      success: false,
-      error: 'ไม่พบข้อมูลผู้ใช้งาน'
-    });
-  }
+  const getPatientSql = `SELECT id FROM patients WHERE user_id = ?`;
 
-  console.log('Looking for patient with user_id:', userId);
-
-  // ดึงข้อมูล patient_id ที่ถูกต้องจากตาราง patients โดยใช้ user_id
-  const getPatientSql = `
-    SELECT id
-    FROM patients 
-    WHERE user_id = ?
-  `;
-  
   db.get(getPatientSql, [userId], (err, patient) => {
     if (err) {
       console.error('Database error fetching patient:', err);
@@ -280,46 +293,28 @@ router.post('/appointment-request', allowRoles('patient'), (req, res) => {
     }
 
     if (!patient) {
-      console.error('Patient not found with user_id:', userId);
       return res.status(400).json({
         success: false,
         error: 'ไม่พบข้อมูลผู้ป่วยในระบบ'
       });
     }
 
-    console.log('Found patient ID:', patient.id);
-
-    // Insert into appointment_requests table - ใช้เฉพาะ column ที่มีอยู่จริง
     const sql = `
       INSERT INTO appointment_requests (
         patient_id, requested_date, requested_time_slot, treatment, notes, status
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, 'NEW')
     `;
+    const params = [patient.id, requested_date, requested_time_slot, treatment, notes || null];
 
-    const params = [
-      patient.id, // patient_id
-      requested_date,
-      requested_time_slot,
-      treatment,
-      notes || null,
-      'NEW'
-    ];
-
-    console.log('Executing SQL with params:', params);
-
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('Database error creating appointment request:', err);
-        console.error('SQL Error details:', err.message);
-        
+    db.run(sql, params, function(err2) {
+      if (err2) {
+        console.error('Database error creating appointment request:', err2);
         return res.status(500).json({
           success: false,
-          error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message
+          error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err2.message
         });
       }
 
-      console.log('Appointment request created successfully, ID:', this.lastID);
-      
       res.json({
         success: true,
         requestId: this.lastID,
@@ -329,10 +324,10 @@ router.post('/appointment-request', allowRoles('patient'), (req, res) => {
   });
 });
 
-// GET /patient/appointment-history (optional - for viewing request history)
+/* =================== ประวัติคำขอนัด =================== */
 router.get('/appointment-history', allowRoles('patient'), (req, res) => {
   const patientId = req.user.patient_id;
-  
+
   const sql = `
     SELECT 
       id,

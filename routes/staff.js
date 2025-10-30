@@ -248,13 +248,13 @@ router.get('/queue', allowRoles('staff'), (req, res) => {
  * =============================== */
 router.get('/queue-master-data', allowRoles('staff'), (req, res) => {
   console.log('Loading queue master data...');
-  
+
   const dentistQuery = `
     SELECT id, pre_name || ' ' || first_name || ' ' || last_name AS name, license_number
     FROM dentists
     ORDER BY first_name, last_name
   `;
-  
+
   const unitQuery = `
     SELECT id, unit_name
     FROM dental_units
@@ -275,7 +275,7 @@ router.get('/queue-master-data', allowRoles('staff'), (req, res) => {
       }
 
       console.log('Master data loaded:', { dentists: dentists.length, units: units.length });
-      
+
       res.json({
         dentists: dentists || [],
         units: units || []
@@ -290,7 +290,7 @@ router.get('/queue-master-data', allowRoles('staff'), (req, res) => {
 router.get('/queue-data', allowRoles('staff'), (req, res) => {
   const { date } = req.query;
   console.log('GET /staff/queue-data called with date:', date);
-  
+
   if (!date) {
     return res.status(400).json({ error: 'Date is required' });
   }
@@ -353,8 +353,8 @@ router.get('/queue-data', allowRoles('staff'), (req, res) => {
           status: item.status ? item.status.toLowerCase() : 'new'
         }));
 
-        console.log('Queue data:', { 
-          queueItems: formattedQueueItems.length, 
+        console.log('Queue data:', {
+          queueItems: formattedQueueItems.length,
           appointments: appointments.length,
           availability: availability.length
         });
@@ -374,7 +374,7 @@ router.get('/queue-data', allowRoles('staff'), (req, res) => {
  * =============================== */
 router.get('/check-availability', allowRoles('staff'), (req, res) => {
   const { date, dentistId, unitId, slot } = req.query;
-  
+
   console.log('Checking availability for:', { date, dentistId, unitId, slot });
 
   if (!date || !dentistId || !unitId || !slot) {
@@ -394,7 +394,7 @@ router.get('/check-availability', allowRoles('staff'), (req, res) => {
     }
 
     const isAvailable = row && row.status === 'FREE';
-    
+
     res.json({
       available: isAvailable,
       status: row ? row.status : 'NOT_FOUND'
@@ -407,7 +407,7 @@ router.get('/check-availability', allowRoles('staff'), (req, res) => {
  * =============================== */
 router.post('/assign-queue', allowRoles('staff'), (req, res) => {
   const { requestId, patientId, dentistId, unitId, date, slot, serviceDescription } = req.body;
-  
+
   console.log('Assign queue with:', { requestId, patientId, dentistId, unitId, date, slot });
 
   if (!requestId || !patientId || !dentistId || !unitId || !date || !slot) {
@@ -442,13 +442,14 @@ router.post('/assign-queue', allowRoles('staff'), (req, res) => {
         patient_id, dentist_id, unit_id, 
         start_time, end_time, date, slot_text,
         status, notes, from_request_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?)
-    `;
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
+`;
+
 
     db.run(
-      insertAppointmentQuery, 
+      insertAppointmentQuery,
       [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription, requestId],
-      function(err1) {
+      function (err1) {
         if (err1) {
           console.error('Insert appointment error:', err1);
           return res.status(500).json({ error: 'ไม่สามารถสร้างนัดหมายได้: ' + err1.message });
@@ -483,8 +484,8 @@ router.post('/assign-queue', allowRoles('staff'), (req, res) => {
             }
 
             console.log('Queue assigned successfully, appointment ID:', appointmentId);
-            res.json({ 
-              success: true, 
+            res.json({
+              success: true,
               message: 'จัดคิวสำเร็จ',
               appointmentId: appointmentId
             });
@@ -516,7 +517,7 @@ router.post('/api/units', allowRoles('staff'), (req, res, next) => {
   resolveUnitTable((err, tableName) => {
     if (err) return next(err);
     const sql = `INSERT INTO ${tableName} (unit_name, status) VALUES (?, ?)`;
-    db.run(sql, [unit_name, status || 'ACTIVE'], function(e) {
+    db.run(sql, [unit_name, status || 'ACTIVE'], function (e) {
       if (e) {
         return res.status(500).json({ error: 'Database error while creating a unit.' });
       }
@@ -552,7 +553,7 @@ router.put('/api/units/:id', allowRoles('staff'), (req, res, next) => {
     sql += 'WHERE id = ?';
     params.push(id);
 
-    db.run(sql, params, function(e) {
+    db.run(sql, params, function (e) {
       if (e) {
         return res.status(500).json({ error: 'Database error while updating the unit.' });
       }
@@ -569,7 +570,7 @@ router.delete('/api/units/:id', allowRoles('staff'), (req, res, next) => {
   resolveUnitTable((err, tableName) => {
     if (err) return next(err);
     const sql = `DELETE FROM ${tableName} WHERE id = ?`;
-    db.run(sql, [id], function(e) {
+    db.run(sql, [id], function (e) {
       if (e) {
         return res.status(500).json({ error: 'Database error while deleting the unit.' });
       }
