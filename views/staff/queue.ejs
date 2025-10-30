@@ -3,112 +3,121 @@
 
 <head>
   <%- include('../partials/head') %>
-    <link rel="stylesheet" href="/public/css/queue.css" />
-    <title>ระบบจัดการคิว</title>
+  <link rel="stylesheet" href="/public/css/queue.css" />
+  <title>ระบบจัดการคิว</title>
 </head>
 
 <body>
   <div class="app">
     <%- include('../partials/navbar') %>
 
-      <main class="main">
-        <div class="queue-app-wrapper">
-          <header>
-            <div class="title">จัดคิวผู้ป่วย (Queue Assign)</div>
-            <div class="toolbar">
-              <label>วันที่</label>
-              <input id="date" type="date" />
-              <button class="chip" id="btnToday">วันนี้</button>
-              <button class="chip" id="btnTomorrow">พรุ่งนี้</button>
-              <div class="seg">
-                <button id="viewAssign" class="active">Assign</button>
-                <button id="viewAgenda">Agenda</button>
-              </div>
+    <main class="main">
+      <div class="queue-app-wrapper">
+        <header>
+          <div class="title">จัดคิวผู้ป่วย (Queue Assign)</div>
+          <div class="toolbar">
+            <label>วันที่</label>
+            <input id="date" type="date" />
+            <button class="chip" id="btnToday">วันนี้</button>
+            <button class="chip" id="btnTomorrow">พรุ่งนี้</button>
+            <div class="seg">
+              <button id="viewAssign" class="active">Assign</button>
+              <button id="viewAgenda">Agenda</button>
             </div>
-          </header>
+          </div>
+        </header>
 
-          <div class="queue-grid-container">
-            <section class="card">
-              <h3>รายการจาก CustomerTime</h3>
+        <div class="queue-grid-container">
+          <!-- ซ้าย: รายการคิว -->
+          <section class="card">
+            <h3>รายการจาก CustomerTime</h3>
+            <div class="search-filters">
               <input type="text" id="qSearch" placeholder="ค้นหาชื่อผู้ป่วย/บริการ" />
               <select id="qStatusFilter">
                 <option value="all">ทุกสถานะ</option>
                 <option value="new">รอจัดคิว</option>
                 <option value="scheduled">จัดคิวแล้ว</option>
               </select>
-              <div id="queueEmpty">— ไม่มีคำขอในวันนี้ —</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>เวลา</th>
-                    <th>ผู้ป่วย</th>
-                    <th>บริการ</th>
-                    <th>สถานะ</th>
-                    <th>เลือก</th>
-                  </tr>
-                </thead>
-                <tbody id="queueBody"></tbody>
-              </table>
-            </section>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>เวลา</th>
+                  <th>ผู้ป่วย</th>
+                  <th>บริการ</th>
+                  <th>สถานะ</th>
+                  <th>เลือก</th>
+                </tr>
+              </thead>
+              <tbody id="queueBody">
+                <tr>
+                  <td colspan="5" class="empty-state">กำลังโหลด...</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-            <section class="card" id="panelAssign">
-              <h3>Assign แบบฟอร์ม</h3>
-              <div id="selLabel">—</div>
-              
-              <div class="form-group">
-                <label>ทันตแพทย์</label>
-                <select id="denSel"></select>
+          <!-- ขวา: Assign Panel -->
+          <section class="card" id="panelAssign">
+            <h3>Assign แบบฟอร์ม</h3>
+            
+            <div id="selLabel" class="selected-queue">—</div>
+            
+            <div class="form-group">
+              <label for="denSel">ทันตแพทย์</label>
+              <select id="denSel">
+                <option value="">-- เลือกทันตแพทย์ --</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="unitSel">หน่วยทันตกรรม</label>
+              <select id="unitSel">
+                <option value="">-- เลือกหน่วย --</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>สถานะห้องและเวลา</label>
+              <div id="slotSuggest" class="slot-suggestions">
+                <div class="slot-info">กรุณาเลือกรายการจาก CustomerTime</div>
               </div>
-              
-              <div class="form-group">
-                <label>หน่วยทันตกรรม</label>
-                <select id="unitSel"></select>
-              </div>
-              
-              <div class="form-group">
-                <label>สถานะห้องและเวลา</label>
-                <div id="slotSuggest"></div>
-              </div>
-              
+            </div>
+            
+            <div class="time-slots-info">
+              <label>ช่วงเวลาที่สามารถจองได้</label>
               <div class="time-slots">
-                <div class="time-row">
-                  <span>10:00-11:00</span>
-                  <span>11:00-12:00</span>
-                  <span>12:00-13:00</span>
-                  <span>13:00-14:00</span>
-                </div>
-                <div class="time-row">
-                  <span>14:00-15:00</span>
-                  <span>15:00-16:00</span>
-                  <span>16:00-17:00</span>
-                  <span>17:00-18:00</span>
-                </div>
-                <div class="time-row">
-                  <span>18:00-19:00</span>
-                </div>
+                <div class="slot-info">กรุณาเลือกรายการจาก CustomerTime</div>
               </div>
-              
-              <button id="btnAssign" class="btn-confirm" disabled>ยืนยันการจัดคิว</button>
-            </section>
+            </div>
+            
+            <button id="cancelSelection" class="btn-secondary">ยกเลิก</button>
+            <button id="btnAssign" class="btn-confirm" disabled>ยืนยันการจัดคิว</button>
+          </section>
 
-            <section class="card" id="panelAgenda" style="display:none">
-              <h3>เคสวันนี้</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>เวลา</th>
-                    <th>Unit</th>
-                    <th>ผู้ป่วย</th>
-                    <th>บริการ</th>
-                    <th>ทันตแพทย์</th>
-                  </tr>
-                </thead>
-                <tbody id="agendaBody"></tbody>
-              </table>
-            </section>
-          </div>
+          <!-- ขวา: Agenda Panel (ซ่อนไว้) -->
+          <section class="card" id="panelAgenda" style="display:none">
+            <h3>เคสวันนี้</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>เวลา</th>
+                  <th>Unit</th>
+                  <th>ผู้ป่วย</th>
+                  <th>บริการ</th>
+                  <th>ทันตแพทย์</th>
+                </tr>
+              </thead>
+              <tbody id="agendaBody">
+                <tr>
+                  <td colspan="5" class="empty-state">กำลังโหลด...</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
         </div>
-      </main>
+      </div>
+    </main>
   </div>
 
   <script src="/public/js/queue.js" nonce="<%= nonce %>"></script>

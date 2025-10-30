@@ -16,23 +16,30 @@
 }
 
 .form-container {
-    max-width: 900px;
-    margin: 24px auto;
-    padding: 0 24px;
+    width: 100%;
+    min-height: 100vh;
+    background-color: #f8fafc;
+    padding: 24px 16px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
 }
 
 .form-card {
+    width: 100%;
+    max-width: 1000px; /* ลดความกว้างลงเล็กน้อย */
     background-color: var(--form-bg);
     border-radius: 12px;
     border: 1px solid var(--form-border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     overflow: hidden;
 }
 
 .form-header {
     padding: 20px 24px;
     background-color: var(--btn-primary-bg);
-    border-bottom: 1px solid var(--btn-primary-bg);
+    border-bottom: 1px solid var(--form-border);
 }
 
 .form-header h1 {
@@ -50,13 +57,13 @@
 }
 
 .form-body {
-    padding: 32px 24px;
+    padding: 24px;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    gap: 28px 24px;
+    gap: 16px 20px; /* ลด gap ลง */
 }
 
 .form-group {
@@ -67,28 +74,28 @@
 /* Span utility classes for grid */
 .g-col-12 { grid-column: span 12; }
 .g-col-6 { grid-column: span 6; }
-.g-col-5 { grid-column: span 5; }
 .g-col-4 { grid-column: span 4; }
 .g-col-3 { grid-column: span 3; }
-.g-col-2 { grid-column: span 2; }
+.g-col-5 { grid-column: span 5; }
 
 .form-group label {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--label-color);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px 14px;
-    font-size: 1rem;
-    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border-radius: 6px;
     border: 1px solid var(--input-border);
     background-color: var(--input-bg);
     transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -96,11 +103,11 @@
 .form-group textarea:focus {
     outline: none;
     border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 .form-group textarea {
-    min-height: 100px;
+    min-height: 80px;
     resize: vertical;
 }
 
@@ -110,22 +117,25 @@
     gap: 12px;
     padding: 20px 24px;
     border-top: 1px solid var(--form-border);
-    margin-top: 32px;
+    margin-top: 24px;
+    background-color: #fafbfd;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     font-weight: 600;
-    font-size: 1rem;
-    padding: 10px 20px;
-    border-radius: 8px;
+    font-size: 0.9rem;
+    padding: 8px 20px;
+    border-radius: 6px;
     border: 1px solid transparent;
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    white-space: nowrap;
 }
 
 .btn-primary {
@@ -141,11 +151,65 @@
 .btn-secondary {
     background-color: var(--btn-secondary-bg);
     color: var(--btn-secondary-text);
-    border-color: var(--btn-secondary-bg);
+    border-color: var(--input-border);
 }
 
 .btn-secondary:hover {
     background-color: var(--btn-secondary-hover);
-    border-color: var(--btn-secondary-hover);
-    color: #2b3a4f;
+    border-color: var(--input-border);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 16px 12px;
+    }
+    
+    .form-body {
+        padding: 20px 16px;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .g-col-6,
+    .g-col-4,
+    .g-col-3 {
+        grid-column: span 1;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* สำหรับหน้าจอขนาดเล็กมาก */
+@media (max-width: 480px) {
+    .form-header {
+        padding: 16px 20px;
+    }
+    
+    .form-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .form-body {
+        padding: 16px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
 }

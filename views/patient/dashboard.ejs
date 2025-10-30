@@ -17,10 +17,10 @@
                 <% if (appointment) { %>
                     <p><strong>วันที่:</strong> <%= new Date(appointment.visit_date).toLocaleDateString('th-TH') %></p>
                     <p><strong>ทันตแพทย์:</strong> <%= appointment.doctor_name %></p>
-                    <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
+                    <a href="/patient/patient_appointment" class="btn">ดูการนัดหมายทั้งหมด</a>
                 <% } else { %>
                     <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
-                    <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
+                    <a href="/patient/patient_appointment" class="btn">ดูการนัดหมายทั้งหมด</a>
                 <% } %>
             </div>
 
