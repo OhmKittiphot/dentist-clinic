@@ -74,6 +74,13 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.page-title {
+    margin: 0;
+    color: var(--brand);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
 .section-title {
     margin: 0 0 20px 0;
     color: var(--brand);

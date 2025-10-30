@@ -209,15 +209,66 @@ router.get('/payments', allowRoles('staff'), (req, res, next) => {
 });
 
 router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
-  const sql = `
-    UPDATE payments
-    SET status = 'paid',
-        payment_date = datetime('now')
-    WHERE id = ?
+  const paymentId = req.params.id;
+  
+  console.log('Processing payment completion for ID:', paymentId);
+  
+  // เก็บ query parameters เดิม
+  const queryParams = new URLSearchParams({
+    page: req.body.page || '1',
+    pageSize: req.body.pageSize || '10',
+    q: req.body.q || '',
+    date_from: req.body.date_from || '',
+    date_to: req.body.date_to || '',
+    sort: req.body.sort || 'latest',
+    success: 'ยืนยันการชำระเงินสำเร็จ'
+  }).toString();
+
+  const checkSql = `
+    SELECT id, status 
+    FROM payments 
+    WHERE id = ?;
   `;
-  db.run(sql, [req.params.id], (err) => {
-    if (err) return next(err);
-    res.redirect('back');
+
+  db.get(checkSql, [paymentId], (err, row) => {
+    if (err) {
+      console.error('Database error:', err);
+      return next(err);
+    }
+    
+    if (!row) {
+      console.log('Payment not found:', paymentId);
+      return res.status(404).send('ไม่พบรายการชำระเงิน');
+    }
+    
+    if (row.status === 'paid') {
+      console.log('Payment already paid:', paymentId);
+      const redirectUrl = `/staff/payments?${new URLSearchParams({
+        ...req.body,
+        success: 'รายการนี้ชำระแล้วอยู่แล้ว'
+      }).toString()}`;
+      return res.redirect(redirectUrl);
+    }
+
+    // อัพเดทสถานะเป็นชำระแล้ว
+    const updSql = `
+      UPDATE payments
+      SET status = 'paid',
+          payment_date = datetime('now')
+      WHERE id = ?;
+    `;
+    
+    db.run(updSql, [paymentId], function(err2) {
+      if (err2) {
+        console.error('Update error:', err2);
+        return next(err2);
+      }
+      
+      console.log('Payment updated successfully:', paymentId);
+      
+      // Redirect กลับไปหน้ารายการชำระเงินพร้อมพารามิเตอร์เดิม
+      res.redirect(`/staff/payments?${queryParams}`);
+    });
   });
 });
 

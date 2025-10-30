@@ -191,7 +191,7 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
     if (!row) return res.status(403).send('Forbidden: not your payment.');
     if (row.status === 'paid') {
       const back = `/patient/payments?success=${encodeURIComponent('รายการนี้ชำระแล้วอยู่แล้ว')}`;
-      return res.redirect(back);
+      return res.render('patient/patient_appointment');
     }
 
     const updSql = `
@@ -208,7 +208,7 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
       if (req.query.date_to) q.push(`date_to=${encodeURIComponent(req.query.date_to)}`);
       q.push(`success=${encodeURIComponent('ชำระเงินสำเร็จ')}`);
       const back = `/patient/payments${q.length ? '?' + q.join('&') : ''}`;
-      res.redirect(back);
+      res.render('patient/patient_appointment')
     });
   });
 });
