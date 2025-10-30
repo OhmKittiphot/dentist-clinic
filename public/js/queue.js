@@ -251,7 +251,7 @@ function renderTimeSlots() {
         ห้อง ID: ${selectedUnit}<br>
         วันที่: ${selectedDate}
         <br><br>
-        <small>กรุณาตรวจสอบว่าได้เพิ่มช่วงเวลาว่างใน dentist_availability แล้วหรือยัง</small>
+        <small>กรุณาเพิ่มเวลาหรือห้องว่างเพื่อยืนยันคิว</small>
       </div>
     `;
     updateSlotSuggestions();
@@ -579,6 +579,146 @@ btnTomorrow.addEventListener('click', () => {
 
 qSearch.addEventListener('input', renderQueue);
 qStatusFilter.addEventListener('change', renderQueue);
+
+/* ===============================
+ * แสดงข้อมูล debug ใน console
+ * =============================== */
+async function loadDebugData() {
+  try {
+    const response = await fetch('/staff/debug-data');
+    const data = await response.json();
+    console.log('=== DEBUG DATA ===', data);
+    return data;
+  } catch (error) {
+    console.error('Error loading debug data:', error);
+    return null;
+  }
+}
+
+/* ===============================
+ * ตรวจสอบข้อมูลก่อนจัดคิว
+ * =============================== */
+async function validateAssignment(item, dentistId, unitId, slot) {
+  try {
+    // ตรวจสอบว่าข้อมูลตรงกับที่มีอยู่ในระบบ
+    const debugData = await loadDebugData();
+    
+    if (debugData) {
+      console.log('Validating assignment with debug data:', {
+        item, dentistId, unitId, slot, debugData
+      });
+
+      // ตรวจสอบ dentist
+      const dentistExists = debugData.dentists?.some(d => d.id == dentistId);
+      if (!dentistExists) {
+        return { valid: false, error: `ทันตแพทย์ ID ${dentistId} ไม่มีในระบบ` };
+      }
+
+      // ตรวจสอบ unit
+      const unitExists = debugData.units?.some(u => u.id == unitId);
+      if (!unitExists) {
+        return { valid: false, error: `หน่วยทันตกรรม ID ${unitId} ไม่มีในระบบ` };
+      }
+
+      // ตรวจสอบ patient
+      const patientExists = debugData.patients?.some(p => p.id == item.patient_id);
+      if (!patientExists) {
+        return { valid: false, error: `ผู้ป่วย ID ${item.patient_id} ไม่มีในระบบ` };
+      }
+
+      // ตรวจสอบ request
+      const requestExists = debugData.requests?.some(r => r.id == item.id);
+      if (!requestExists) {
+        return { valid: false, error: `คำขอนัดหมาย ID ${item.id} ไม่มีในระบบหรือถูกจัดคิวแล้ว` };
+      }
+
+      // ตรวจสอบ schedule
+      const scheduleExists = debugData.schedules?.some(s => 
+        s.dentist_id == dentistId && 
+        s.unit_id == unitId && 
+        s.schedule_date === item.date && 
+        s.time_slot === slot &&
+        s.status === 'AVAILABLE'
+      );
+      
+      if (!scheduleExists) {
+        return { valid: false, error: `ไม่มีตารางเวลาว่างสำหรับการจองนี้` };
+      }
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('Validation error:', error);
+    return { valid: false, error: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูล' };
+  }
+}
+
+/* ===============================
+ * แก้ไขฟังก์ชันยืนยันการจัดคิว
+ * =============================== */
+btnAssign.addEventListener('click', async () => {
+  if(!selectedQueueId || !selectedSlot) return;
+  
+  const item = queueItems.find(q => q.id === selectedQueueId);
+  const selectedDentist = denSel.value;
+  const selectedUnit = unitSel.value;
+
+  if (!item || !selectedDentist || !selectedUnit) return;
+
+  console.log('Attempting to assign:', {
+    item, selectedDentist, selectedUnit, selectedSlot
+  });
+
+  // ตรวจสอบข้อมูลก่อน
+  const validation = await validateAssignment(item, selectedDentist, selectedUnit, selectedSlot);
+  
+  
+
+  // ส่งข้อมูลไปจัดคิว
+  const payload = {
+    requestId: item.id, 
+    patientId: item.patient_id, 
+    dentistId: selectedDentist, 
+    unitId: selectedUnit, 
+    date: item.date, 
+    slot: selectedSlot,
+    serviceDescription: item.service_description 
+  };
+  
+  console.log('Assigning queue with validated payload:', payload);
+  
+  try {
+    btnAssign.disabled = true;
+    btnAssign.textContent = 'กำลังจัดคิว...';
+
+    const resp = await fetch('/staff/assign-queue', {
+      method: 'POST', 
+      headers: {'Content-Type': 'application/json'}, 
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await resp.json();
+    
+    if(!resp.ok) {
+      throw new Error(result.error || 'เกิดข้อผิดพลาด');
+    }
+    
+    alert('จัดคิวสำเร็จ!'); 
+    
+    // โหลดข้อมูลใหม่
+    await loadDataForDate(); 
+    
+    // รีเซ็ต form
+    cancelSelection();
+    
+  } catch (error) {
+    console.error('Assign error:', error);
+    alert('เกิดข้อผิดพลาด: ' + error.message);
+  } finally {
+    btnAssign.disabled = false;
+    btnAssign.textContent = 'ยืนยันการจัดคิว';
+  }
+});
 
 // Initialize
 initPage();

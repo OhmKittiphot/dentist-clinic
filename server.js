@@ -94,6 +94,18 @@ app.use((err, req, res, next) => {
   res.status(500).send('Server Error'); 
 });
 
+// เพิ่มใน app.js หรือไฟล์หลัก
+app.locals.getStatusText = function(status) {
+    const statusMap = {
+        'PENDING': 'รอการยืนยัน',
+        'CONFIRMED': 'ยืนยันแล้ว', 
+        'COMPLETED': 'เสร็จสิ้น',
+        'CANCELLED': 'ยกเลิก',
+        'NEW': 'ใหม่'
+    };
+    return statusMap[status] || status;
+};
+
 
 
 // --- Server Start ---

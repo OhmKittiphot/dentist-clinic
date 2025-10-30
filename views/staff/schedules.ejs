@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <%- include('../partials/head') %>
+  <title>จัดการตารางเวลาทันตแพทย์</title>
+  <link rel="stylesheet" href="/public/css/schedules.css">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials/navbar') %>
+
+    <main class="main">
+      <div class="schedules-container">
+        <header class="page-header">
+          <h1>จัดการตารางเวลาทันตแพทย์</h1>
+          <p>เพิ่มและจัดการช่วงเวลาที่ทันตแพทย์ว่างสำหรับการนัดหมาย</p>
+        </header>
+
+        <div class="schedules-grid">
+          <!-- ซ้าย: เพิ่มตารางเวลา -->
+          <section class="card">
+            <h2>เพิ่มตารางเวลา</h2>
+            <h3>เพิ่มหลายช่วงเวลา</h3>
+            <form id="bulkAddForm">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bulkDentist">ทันตแพทย์</label>
+                  <select id="bulkDentist" required>
+                    <option value="">-- เลือกทันตแพทย์ --</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="bulkUnit">หน่วยทันตกรรม</label>
+                  <select id="bulkUnit" required>
+                    <option value="">-- เลือกหน่วยทันตกรรม --</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="bulkDate">วันที่</label>
+                <input type="date" id="bulkDate" required>
+              </div>
+              
+              <div class="form-group">
+                <label>เลือกช่วงเวลา</label>
+                <div class="time-slots-checkboxes">
+                  <% const timeSlots = ['10:00-11:00','11:00-12:00','12:00-13:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00','17:00-18:00','18:00-19:00']; %>
+                  <% timeSlots.forEach(slot => { %>
+                    <label class="checkbox-label">
+                      <input type="checkbox" name="timeSlots" value="<%= slot %>">
+                      <span><%= slot %></span>
+                    </label>
+                  <% }); %>
+                </div>
+              </div>
+              
+              <button type="submit" class="btn btn-secondary">เพิ่มช่วงเวลาที่เลือก</button>
+            </form>
+          </section>
+
+          <!-- ขว: รายการตารางเวลา -->
+          <section class="card">
+            <h2>ตารางเวลาทั้งหมด</h2>
+            
+            <div class="filters">
+              <div class="form-group">
+                <label for="filterDate">กรองตามวันที่</label>
+                <input type="date" id="filterDate">
+              </div>
+              
+              <div class="form-group">
+                <label for="filterDentist">กรองตามทันตแพทย์</label>
+                <select id="filterDentist">
+                  <option value="">ทั้งหมด</option>
+                </select>
+              </div>
+              
+            </div>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>วันที่</th>
+                    <th>ทันตแพทย์</th>
+                    <th>หน่วย</th>
+                    <th>ช่วงเวลา</th>
+                    <th>สถานะ</th>
+                    <th>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="schedulesBody">
+                  <tr>
+                    <td colspan="6" class="empty-state">กำลังโหลด...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/public/js/schedules.js"></script>
+</body>
+</html>

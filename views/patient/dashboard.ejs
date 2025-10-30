@@ -3,88 +3,162 @@
 <head>
   <%- include('../partials/head') %>
   <title>แดชบอร์ดผู้ป่วย</title>
-  <link rel="stylesheet" href="/public/css/main.css">
-  <link rel="stylesheet" href="/public/css/patient.css">
-  <style>
-    .actions { display:flex; gap:8px; margin-top:12px; flex-wrap: wrap; }
-    .btn-danger { background:#e74c3c; color:#fff; }
-    .btn-outline { background:transparent; border:1px solid var(--border); }
-    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index: 1000;}
-    .modal .modal-content { background:#fff; width:min(520px, 92vw); border-radius:12px; padding:20px; }
-    .modal h3 { margin-top:0; }
-    .form-row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    .form-row .full { grid-column: 1 / -1; }
-  </style>
+  <link rel="stylesheet" href="/public/css/patient_dashboard.css">
 </head>
 <body>
   <div class="app">
     <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'dashboard' }) %>
 
     <main class="main-content">
-      <h1>ยินดีต้อนรับสู่แดชบอร์ดของคุณ</h1>
+      <div class="dashboard-header">
+        <h1>แดชบอร์ดผู้ป่วย</h1>
+        <p>ยินดีต้อนรับ, <%= user.first_name %> <%= user.last_name %></p>
+      </div>
 
-      <!-- การนัดหมายครั้งถัดไป -->
-      <div class="card">
-        <h2>การนัดหมายครั้งถัดไป</h2>
-        <% if (appointment) {
-             const start = new Date(appointment.start_time);
-             const end   = new Date(appointment.end_time);
-             const dateTh = start.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
-             const timeRange = `${start.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}`;
-             const statusMap = {
-               pending: 'รอยืนยัน',
-               confirmed: 'ยืนยันแล้ว',
-               checked_in: 'เช็คอินแล้ว',
-               done: 'เสร็จสิ้น',
-               cancelled: 'ยกเลิก',
-               no_show: 'ไม่มา'
-             };
-        %>
-          <% if (appointment.is_request) { %>
-            <p style="margin:0 0 8px 0; color:#777;">(คำขอนัด ยังไม่ถูกจัดคิวโดยคลินิก)</p>
-          <% } %>
-          <p><strong>วันที่:</strong> <%= dateTh %></p>
-          <p><strong>เวลา:</strong> <%= timeRange %></p>
-          <p><strong>ทันตแพทย์:</strong> <%= appointment.dentist_name || (appointment.is_request ? 'รอจัดคิว' : 'ไม่ระบุ') %></p>
-          <p><strong>ยูนิต/ห้อง:</strong> <%= appointment.unit_name || (appointment.is_request ? 'รอจัดคิว' : '-') %></p>
-          <p>
-            <strong>สถานะ:</strong>
-            <span class="chip <%= appointment.status %>"><%= statusMap[appointment.status] || appointment.status %></span>
-          </p>
-          <% if (appointment.notes) { %>
-            <p><strong>หมายเหตุ:</strong> <%= appointment.notes %></p>
-          <% } %>
+      <div class="dashboard-grid">
+        <!-- การนัดหมายครั้งถัดไป -->
+        <div class="card appointment-card">
+          <div class="card-header">
+            <h2>การนัดหมายครั้งถัดไป</h2>
+            <a href="/patient/patient_appointment" class="btn btn-primary btn-sm">ขอรับบริการใหม่</a>
+          </div>
+          
+          <% if (appointment) { %>
+            <div class="appointment-details">
+              <% 
+                const start = new Date(appointment.start_time);
+                const end = new Date(appointment.end_time);
+                const dateTh = start.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+                const timeRange = `${start.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}`;
+                const statusMap = {
+                  'pending': 'รอยืนยัน',
+                  'confirmed': 'ยืนยันแล้ว',
+                  'checked_in': 'เช็คอินแล้ว',
+                  'done': 'เสร็จสิ้น',
+                  'cancelled': 'ยกเลิก',
+                  'no_show': 'ไม่มา',
+                  'NEW': 'รอจัดคิว',
+                  'PENDING': 'รอจัดคิว'
+                };
+                const statusText = statusMap[appointment.status] || appointment.status;
+                const statusClass = appointment.status.toLowerCase();
+              %>
+              
+              <% if (appointment.is_request) { %>
+                <div class="info-badge">คำขอนัดหมาย (รอจัดคิวโดยคลินิก)</div>
+              <% } %>
+              
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="label">วันที่:</span>
+                  <span class="value"><%= dateTh %></span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">เวลา:</span>
+                  <span class="value"><%= timeRange %></span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">ทันตแพทย์:</span>
+                  <span class="value"><%= appointment.dentist_name || (appointment.is_request ? 'รอจัดคิว' : 'ไม่ระบุ') %></span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">ยูนิต/ห้อง:</span>
+                  <span class="value"><%= appointment.unit_name || (appointment.is_request ? 'รอจัดคิว' : '-') %></span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">สถานะ:</span>
+                  <span class="status-chip <%= statusClass %>"><%= statusText %></span>
+                </div>
+                <% if (appointment.notes) { %>
+                <div class="detail-item full-width">
+                  <span class="label">หมายเหตุ:</span>
+                  <span class="value"><%= appointment.notes %></span>
+                </div>
+                <% } %>
+              </div>
 
-          <% if (!appointment.is_request) { %>
-            <div class="actions">
-              <a href="/patient/appointments" class="btn">ดูการนัดหมายทั้งหมด</a>
-              <% if (['pending','confirmed'].includes(String(appointment.status).toLowerCase())) { %>
-                <button class="btn btn-outline" id="btnReschedule" data-id="<%= appointment.id %>">เลื่อนนัด</button>
-                <button class="btn btn-danger" id="btnCancelAppt" data-id="<%= appointment.id %>">ยกเลิกนัด</button>
+              <div class="action-buttons">
+                <% if (!appointment.is_request) { %>
+                  <a href="/patient/appointments" class="btn btn-outline">ดูการนัดหมายทั้งหมด</a>
+                  <% if (['pending','confirmed'].includes(String(appointment.status).toLowerCase())) { %>
+                    <button class="btn btn-warning btn-reschedule" data-id="<%= appointment.id %>">เลื่อนนัด</button>
+                    <button class="btn btn-danger btn-cancel" data-id="<%= appointment.id %>">ยกเลิกนัด</button>
+                  <% } %>
+                <% } else { %>
+                  <a href="/patient/appointment-history" class="btn btn-outline"></a>
+                <% } %>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="empty-state">
+              <div class="empty-icon">📅</div>
+              <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
+              <a href="/patient/patient_appointment" class="btn btn-primary">ขอรับบริการ/จองนัดหมาย</a>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- การชำระเงิน -->
+        <div class="card payment-card">
+          <div class="card-header">
+            <h2>การชำระเงิน</h2>
+            <a href="/patient/payments" class="btn btn-outline btn-sm">ดูประวัติทั้งหมด</a>
+          </div>
+          
+          <% if (payment) { %>
+            <div class="payment-details">
+              <div class="payment-amount">
+                <span class="amount"><%= Number(payment.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %></span>
+                <span class="currency">บาท</span>
+              </div>
+              <div class="payment-status <%= payment.status %>">
+                <%= payment.status === 'pending' ? 'ค้างชำระ' : 'ชำระแล้ว' %>
+              </div>
+              <div class="payment-date">
+                วันที่: <%= payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('th-TH') : 'รอชำระ' %>
+              </div>
+              <% if (payment.status === 'pending') { %>
+                <a href="/patient/payments" class="btn btn-primary btn-pay">ชำระเงิน now</a>
               <% } %>
             </div>
           <% } else { %>
-            <a href="/patient/patient_appointment" class="btn">แก้ไข/ส่งคำขอใหม่</a>
+            <div class="empty-state">
+              <div class="empty-icon">💳</div>
+              <p>คุณไม่มีบิลที่ต้องชำระ</p>
+              <a href="/patient/payments" class="btn btn-outline">ดูประวัติการชำระเงิน</a>
+            </div>
           <% } %>
-        <% } else { %>
-          <p>คุณไม่มีการนัดหมายเร็วๆ นี้</p>
-          <a href="/patient/patient_appointment" class="btn">ขอรับบริการ/จองนัดหมาย</a>
-        <% } %>
-      </div>
+        </div>
 
-      <!-- การชำระเงิน -->
-      <div class="card">
-        <h2>การชำระเงิน</h2>
-        <% if (payment) { %>
-          <p><strong>ยอดที่ต้องชำระ:</strong> 
-            <%= Number(payment.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 }) %> บาท
-          </p>
-          <p><strong>สถานะ:</strong> <%= payment.status === 'pending' ? 'ยังไม่ชำระ' : 'ชำระแล้ว' %></p>
-          <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
-        <% } else { %>
-          <p>คุณไม่มีบิลที่ต้องชำระ</p>
-          <a href="/patient/payments" class="btn">ดูประวัติการชำระเงิน</a>
-        <% } %>
+        <!-- ประวัติการนัดหมายล่าสุด -->
+        <div class="card history-card">
+          <div class="card-header">
+            <h2>ประวัติการนัดหมายล่าสุด</h2>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>บริการ</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="recentAppointments">
+                <!-- จะถูกเติมด้วย JavaScript -->
+              </tbody>
+            </table>
+            <div class="loading-state" id="loadingAppointments">
+              <p>กำลังโหลดข้อมูล...</p>
+            </div>
+            <div class="empty-state" id="emptyAppointments" style="display:none;">
+              <p>ไม่พบประวัติการนัดหมาย</p>
+            </div>
+          </div>
+        </div>
+
+        
       </div>
     </main>
   </div>
@@ -92,111 +166,49 @@
   <!-- Modal เลื่อนนัด -->
   <div class="modal" id="rescheduleModal" aria-hidden="true">
     <div class="modal-content">
-      <h3>เลื่อนนัด</h3>
+      <h3>เลื่อนนัดหมาย</h3>
       <p>เลือกวันและช่วงเวลาใหม่เพื่อเปิดคำขอนัดแทนคิวเดิม</p>
-      <div class="form-row">
-        <div>
-          <label for="rsDate">วันที่ใหม่</label>
-          <input type="date" id="rsDate" min="<%= new Date().toISOString().split('T')[0] %>">
+      
+      <form id="rescheduleForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="rsDate">วันที่ใหม่ *</label>
+            <input type="date" id="rsDate" name="rsDate" required 
+                   min="<%= new Date().toISOString().split('T')[0] %>">
+          </div>
+          <div class="form-group">
+            <label for="rsSlot">ช่วงเวลา *</label>
+            <select id="rsSlot" name="rsSlot" required>
+              <option value="">-- เลือกช่วงเวลา --</option>
+              <option value="10:00-11:00">10:00-11:00</option>
+              <option value="11:00-12:00">11:00-12:00</option>
+              <option value="12:00-13:00">12:00-13:00</option>
+              <option value="13:00-14:00">13:00-14:00</option>
+              <option value="14:00-15:00">14:00-15:00</option>
+              <option value="15:00-16:00">15:00-16:00</option>
+              <option value="16:00-17:00">16:00-17:00</option>
+              <option value="17:00-18:00">17:00-18:00</option>
+              <option value="18:00-19:00">18:00-19:00</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label for="rsNote">หมายเหตุ (ถ้ามี)</label>
+            <textarea id="rsNote" name="rsNote" rows="3" 
+                      placeholder="เช่น ไม่สะดวกเวลาเดิม ขอเลื่อน..."></textarea>
+          </div>
         </div>
-        <div>
-          <label for="rsSlot">ช่วงเวลา</label>
-          <select id="rsSlot">
-            <option value="">-- เลือกช่วงเวลา --</option>
-            <option value="10:00-11:00">10:00-11:00</option>
-            <option value="11:00-12:00">11:00-12:00</option>
-            <option value="12:00-13:00">12:00-13:00</option>
-            <option value="13:00-14:00">13:00-14:00</option>
-            <option value="14:00-15:00">14:00-15:00</option>
-            <option value="15:00-16:00">15:00-16:00</option>
-            <option value="16:00-17:00">16:00-17:00</option>
-            <option value="17:00-18:00">17:00-18:00</option>
-            <option value="18:00-19:00">18:00-19:00</option>
-          </select>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnRsCancel">ปิด</button>
+          <button type="submit" class="btn btn-primary" id="btnRsSubmit">
+            <span class="btn-text">ยืนยันเลื่อนนัด</span>
+            <span class="btn-loading" style="display:none;">กำลังประมวลผล...</span>
+          </button>
         </div>
-        <div class="full">
-          <label for="rsNote">หมายเหตุ (ถ้ามี)</label>
-          <textarea id="rsNote" rows="2" placeholder="เช่น ไม่สะดวกเวลาเดิม ขอเลื่อน..."></textarea>
-        </div>
-      </div>
-      <div class="actions" style="margin-top:16px;">
-        <button class="btn btn-outline" id="btnRsCancel">ปิด</button>
-        <button class="btn" id="btnRsSubmit">ยืนยันเลื่อนนัด</button>
-      </div>
+      </form>
     </div>
   </div>
 
-  <script>
-    (function(){
-      const apptId = document.getElementById('btnCancelAppt')?.dataset.id || document.getElementById('btnReschedule')?.dataset.id;
-
-      // ยกเลิกนัด
-      const btnCancel = document.getElementById('btnCancelAppt');
-      if (btnCancel) {
-        btnCancel.addEventListener('click', async () => {
-          if (!confirm('ยืนยันการยกเลิกนัดนี้?')) return;
-          btnCancel.disabled = true;
-          try {
-            const resp = await fetch('/patient/appointments/' + btnCancel.dataset.id + '/cancel', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await resp.json();
-            if (!data.success) throw new Error(data.error || 'ยกเลิกไม่สำเร็จ');
-            alert('ยกเลิกนัดสำเร็จ');
-            location.reload();
-          } catch(e) {
-            alert('ผิดพลาด: ' + e.message);
-          } finally {
-            btnCancel.disabled = false;
-          }
-        });
-      }
-
-      // เปิด modal เลื่อนนัด
-      const modal = document.getElementById('rescheduleModal');
-      const btnReschedule = document.getElementById('btnReschedule');
-      const btnRsClose = document.getElementById('btnRsCancel');
-      const btnRsSubmit = document.getElementById('btnRsSubmit');
-      const rsDate = document.getElementById('rsDate');
-      const rsSlot = document.getElementById('rsSlot');
-      const rsNote = document.getElementById('rsNote');
-
-      if (btnReschedule) {
-        btnReschedule.addEventListener('click', () => {
-          modal.style.display = 'flex';
-        });
-      }
-      btnRsClose?.addEventListener('click', () => modal.style.display = 'none');
-
-      // ยืนยันเลื่อนนัด
-      btnRsSubmit?.addEventListener('click', async () => {
-        if (!rsDate.value || !rsSlot.value) {
-          alert('กรุณาเลือกวันที่และช่วงเวลาใหม่');
-          return;
-        }
-        btnRsSubmit.disabled = true;
-        try {
-          const resp = await fetch('/patient/appointments/' + btnReschedule.dataset.id + '/reschedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              requested_date: rsDate.value,
-              requested_time_slot: rsSlot.value,
-              notes: rsNote.value || ''
-            })
-          });
-          const data = await resp.json();
-          if (!data.success) throw new Error(data.error || 'เลื่อนไม่สำเร็จ');
-          alert('เลื่อนนัดสำเร็จ คลินิกจะยืนยันคิวใหม่อีกครั้ง');
-          location.reload();
-        } catch(e) {
-          alert('ผิดพลาด: ' + e.message);
-        } finally {
-          btnRsSubmit.disabled = false;
-          modal.style.display = 'none';
-        }
-      });
-    })();
-  </script>
+  <script src="/public/js/patient_dashboard.js"></script>
 </body>
 </html>

@@ -431,3 +431,31 @@ button { cursor: pointer; }
 .card {
   animation: fadeIn 0.3s ease;
 }
+
+.cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cases-table th, .cases-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px 10px;
+}
+
+.cases-table th {
+  background-color: var(--brand);
+  color: white;
+}
+
+.chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  text-decoration: none;
+  color: white;
+}
+
+.chip-edit { background-color: var(--success); }
+.chip-muted { background-color: #999; }

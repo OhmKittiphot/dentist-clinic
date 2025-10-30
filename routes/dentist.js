@@ -403,5 +403,112 @@ router.post('/api/availability', allowRoles('dentist','staff'), express.json(), 
   });
 });
 
+// หน้านัดหมายหลัก
+router.get('/appointments', allowRoles('dentist'), (req, res) => {
+    const dentistId = req.user.id;
+    const date = req.query.date || new Date().toISOString().split('T')[0];
+    
+    // SQL เพื่อดึงเคสในวันที่เลือก
+    const casesSql = `
+        SELECT 
+            a.id,
+            a.slot_text,
+            a.status,
+            du.unit_name,
+            p.id AS patient_id,
+            p.first_name || ' ' || p.last_name AS patient_name,
+            printf('CN%04d', p.id) AS clinic_number
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN dental_units du ON a.unit_id = du.id
+        WHERE a.dentist_id = ? AND date(a.date) = date(?)
+        ORDER BY a.slot_text
+    `;
+
+    db.all(casesSql, [dentistId, date], (err, cases) => {
+        if (err) {
+            console.error('Error fetching appointments:', err);
+            // ใช้ res.send แทน res.render('error') ชั่วคราว
+            return res.status(500).send(`
+                <html>
+                    <body>
+                        <h1>เกิดข้อผิดพลาด</h1>
+                        <p>ไม่สามารถโหลดข้อมูลนัดหมายได้: ${err.message}</p>
+                        <a href="/dentist/appointments">กลับไปหน้านัดหมาย</a>
+                    </body>
+                </html>
+            `);
+        }
+
+        res.render('dentists/appointment', {
+            cases: cases || [],
+            date: date,
+            user: req.user,
+            userRole: req.user.role,
+            page: 'appointments'
+        });
+    });
+});
+
+// API สำหรับดึงข้อมูล availability (เสริม)
+router.get('/api/appointments/availability', allowRoles('dentist'), (req, res) => {
+    const { date, unit_id } = req.query;
+    const dentistId = req.user.id;
+
+    if (!date) {
+        return res.status(400).json({ error: 'ต้องการพารามิเตอร์ date' });
+    }
+
+    const sql = `
+        SELECT 
+            da.slot_text,
+            da.status,
+            du.unit_name
+        FROM dentist_availability da
+        JOIN dental_units du ON da.unit_id = du.id
+        WHERE da.dentist_id = ? AND da.date = ? 
+        ${unit_id ? 'AND da.unit_id = ?' : ''}
+        ORDER BY da.slot_text
+    `;
+
+    const params = unit_id ? [dentistId, date, unit_id] : [dentistId, date];
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Error fetching availability:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(rows || []);
+    });
+});
+
+router.post('/appointments/:id/status', allowRoles('dentist'), express.json(), (req, res) => {
+    const appointmentId = req.params.id;
+    const { status } = req.body;
+
+    if (!status) {
+        return res.status(400).json({ error: 'ต้องการสถานะ' });
+    }
+
+    const validStatuses = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
+    }
+
+    const sql = `UPDATE appointments SET status = ? WHERE id = ? AND dentist_id = ?`;
+    
+    db.run(sql, [status, appointmentId, req.user.id], function(err) {
+        if (err) {
+            console.error('Error updating appointment status:', err);
+            return res.status(500).json({ error: 'ไม่สามารถอัพเดทสถานะได้' });
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'ไม่พบนัดหมาย' });
+        }
+
+        res.json({ success: true, message: 'อัพเดทสถานะสำเร็จ' });
+    });
+});
 
 module.exports = router;

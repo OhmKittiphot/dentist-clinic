@@ -215,12 +215,16 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
 
 /* =================== ฟอร์มขอนัด (ผู้ป่วยส่งคำขอ) =================== */
 router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
-  const userId = req.user.id;
+  const patientId = req.user.patient_id;
+
+  if (!patientId) {
+    return res.status(403).send('Access denied. No patient record found.');
+  }
 
   const patientSql = `
     SELECT pre_name, first_name, last_name, phone, email 
     FROM patients 
-    WHERE user_id = ?
+    WHERE id = ?
   `;
 
   const servicesSql = `
@@ -229,7 +233,7 @@ router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
     ORDER BY category, description
   `;
 
-  db.get(patientSql, [userId], (err, patient) => {
+  db.get(patientSql, [patientId], (err, patient) => {
     if (err) {
       console.error('Error fetching patient data:', err);
       return getServices(null);
@@ -276,45 +280,125 @@ router.post('/appointment-request', allowRoles('patient'), (req, res) => {
   }
 
   const userId = req.user.id;
-  const getPatientSql = `SELECT id FROM patients WHERE user_id = ?`;
+  
+  // ใช้ patient_id จาก req.user ที่ได้จาก middleware fetchPatientId
+  const patientId = req.user.patient_id;
+  
+  if (!patientId) {
+    return res.status(400).json({
+      success: false,
+      error: 'ไม่พบข้อมูลผู้ป่วยในระบบ'
+    });
+  }
 
-  db.get(getPatientSql, [userId], (err, patient) => {
+  const sql = `
+    INSERT INTO appointment_requests (
+      patient_id, requested_date, requested_time_slot, treatment, notes, status
+    ) VALUES (?, ?, ?, ?, ?, 'NEW')
+  `;
+  const params = [patientId, requested_date, requested_time_slot, treatment, notes || null];
+
+  db.run(sql, params, function(err) {
     if (err) {
-      console.error('Database error fetching patient:', err);
+      console.error('Database error creating appointment request:', err);
       return res.status(500).json({
         success: false,
-        error: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ป่วย: ' + err.message
+        error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message
       });
     }
 
-    if (!patient) {
-      return res.status(400).json({
-        success: false,
-        error: 'ไม่พบข้อมูลผู้ป่วยในระบบ'
-      });
-    }
+    res.json({
+      success: true,
+      requestId: this.lastID,
+      message: 'ส่งคำขอนัดหมายสำเร็จ'
+    });
+  });
+});
 
-    const sql = `
-      INSERT INTO appointment_requests (
-        patient_id, requested_date, requested_time_slot, treatment, notes, status
-      ) VALUES (?, ?, ?, ?, ?, 'NEW')
+// เพิ่ม route สำหรับโหลดสถิติ
+router.get('/dashboard-stats', allowRoles('patient'), async (req, res) => {
+  try {
+    const patientId = req.user.patient_id;
+    
+    // นัดหมายทั้งหมด
+    const totalAppointmentsSql = `
+      SELECT COUNT(*) as count FROM appointments 
+      WHERE patient_id = ?
     `;
-    const params = [patient.id, requested_date, requested_time_slot, treatment, notes || null];
+    
+    // นัดหมายที่เสร็จสิ้น
+    const completedAppointmentsSql = `
+      SELECT COUNT(*) as count FROM appointments 
+      WHERE patient_id = ? AND status = 'done'
+    `;
+    
+    // ค้างชำระ
+    const pendingPaymentsSql = `
+      SELECT COUNT(*) as count FROM payments p
+      JOIN visits v ON p.visit_id = v.id
+      WHERE v.patient_id = ? AND p.status = 'pending'
+    `;
 
-    db.run(sql, params, function(err2) {
-      if (err2) {
-        console.error('Database error creating appointment request:', err2);
-        return res.status(500).json({
-          success: false,
-          error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err2.message
-        });
-      }
+    const [total, completed, pending] = await Promise.all([
+      new Promise((resolve, reject) => {
+        db.get(totalAppointmentsSql, [patientId], (err, row) => 
+          err ? reject(err) : resolve(row?.count || 0)
+        );
+      }),
+      new Promise((resolve, reject) => {
+        db.get(completedAppointmentsSql, [patientId], (err, row) => 
+          err ? reject(err) : resolve(row?.count || 0)
+        );
+      }),
+      new Promise((resolve, reject) => {
+        db.get(pendingPaymentsSql, [patientId], (err, row) => 
+          err ? reject(err) : resolve(row?.count || 0)
+        );
+      })
+    ]);
 
-      res.json({
-        success: true,
-        requestId: this.lastID,
-        message: 'ส่งคำขอนัดหมายสำเร็จ'
+    res.json({
+      success: true,
+      totalAppointments: total,
+      completedAppointments: completed,
+      pendingPayments: pending
+    });
+
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'เกิดข้อผิดพลาดในการโหลดสถิติ'
+    });
+  }
+});
+
+// เพิ่ม route สำหรับยกเลิกคำขอนัดหมาย
+router.post('/appointment-requests/:id/cancel', allowRoles('patient'), (req, res) => {
+  const requestId = req.params.id;
+  const patientId = req.user.patient_id;
+
+  const checkSql = `
+    SELECT id, status FROM appointment_requests 
+    WHERE id = ? AND patient_id = ?
+  `;
+
+  db.get(checkSql, [requestId, patientId], (err, request) => {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+    if (!request) return res.status(404).json({ success: false, error: 'ไม่พบคำขอนัดหมาย' });
+
+    if (request.status !== 'NEW' && request.status !== 'PENDING') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ไม่สามารถยกเลิกคำขอในสถานะนี้ได้' 
       });
+    }
+
+    const updateSql = `UPDATE appointment_requests SET status = 'CANCELLED' WHERE id = ?`;
+    
+    db.run(updateSql, [requestId], function(err) {
+      if (err) return res.status(500).json({ success: false, error: err.message });
+      res.json({ success: true, message: 'ยกเลิกคำขอนัดหมายสำเร็จ' });
     });
   });
 });
@@ -322,8 +406,9 @@ router.post('/appointment-request', allowRoles('patient'), (req, res) => {
 /* =================== ประวัติคำขอนัด =================== */
 router.get('/appointment-history', allowRoles('patient'), (req, res) => {
   const patientId = req.user.patient_id;
+  const limit = req.query.limit ? parseInt(req.query.limit) : null;
 
-  const sql = `
+  let sql = `
     SELECT 
       id,
       requested_date,
@@ -337,10 +422,30 @@ router.get('/appointment-history', allowRoles('patient'), (req, res) => {
     ORDER BY created_at DESC
   `;
 
-  db.all(sql, [patientId], (err, requests) => {
+  const params = [patientId];
+
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(limit);
+  }
+
+  db.all(sql, params, (err, requests) => {
     if (err) {
       console.error('Error fetching appointment history:', err);
+      if (req.query.limit) {
+        return res.status(500).json({ 
+          success: false, 
+          error: 'เกิดข้อผิดพลาดในการโหลดข้อมูล' 
+        });
+      }
       return res.status(500).send('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    }
+
+    if (req.query.limit) {
+      return res.json({
+        success: true,
+        requests: requests
+      });
     }
 
     res.render('patient/appointment_history', {
@@ -353,36 +458,36 @@ router.get('/appointment-history', allowRoles('patient'), (req, res) => {
 });
 
 /* =================== ยกเลิกนัดจริง (appointments) =================== */
-router.post('/appointments/:id/cancel', allowRoles('patient'), (req, res) => {
-  const apptId = req.params.id;
-  const patientId = req.user.patient_id;
+// router.post('/appointments/:id/cancel', allowRoles('patient'), (req, res) => {
+//   const apptId = req.params.id;
+//   const patientId = req.user.patient_id;
 
-  const checkSql = `
-    SELECT id, patient_id, status, start_time
-    FROM appointments
-    WHERE id = ? AND patient_id = ?
-  `;
+//   const checkSql = `
+//     SELECT id, patient_id, status, start_time
+//     FROM appointments
+//     WHERE id = ? AND patient_id = ?
+//   `;
 
-  db.get(checkSql, [apptId, patientId], (err, appt) => {
-    if (err) return res.status(500).json({ success: false, error: err.message });
-    if (!appt) return res.status(404).json({ success: false, error: 'ไม่พบนัดของคุณ' });
+//   db.get(checkSql, [apptId, patientId], (err, appt) => {
+//     if (err) return res.status(500).json({ success: false, error: err.message });
+//     if (!appt) return res.status(404).json({ success: false, error: 'ไม่พบนัดของคุณ' });
 
-    const allowed = ['PENDING','CONFIRMED'];
-    const nowOk = new Date(appt.start_time) > new Date(); // ยังไม่ถึงเวลา
-    if (!allowed.includes(String(appt.status).toUpperCase())) {
-      return res.status(400).json({ success: false, error: 'ไม่สามารถยกเลิกนัดสถานะนี้ได้' });
-    }
-    if (!nowOk) {
-      return res.status(400).json({ success: false, error: 'เลยเวลาเริ่มนัดแล้ว ไม่สามารถยกเลิกได้' });
-    }
+//     const allowed = ['PENDING','CONFIRMED'];
+//     const nowOk = new Date(appt.start_time) > new Date(); // ยังไม่ถึงเวลา
+//     if (!allowed.includes(String(appt.status).toUpperCase())) {
+//       return res.status(400).json({ success: false, error: 'ไม่สามารถยกเลิกนัดสถานะนี้ได้' });
+//     }
+//     if (!nowOk) {
+//       return res.status(400).json({ success: false, error: 'เลยเวลาเริ่มนัดแล้ว ไม่สามารถยกเลิกได้' });
+//     }
 
-    const upd = `UPDATE appointments SET status = 'cancelled' WHERE id = ?`;
-    db.run(upd, [apptId], (err2) => {
-      if (err2) return res.status(500).json({ success: false, error: err2.message });
-      return res.json({ success: true, message: 'ยกเลิกนัดสำเร็จ' });
-    });
-  });
-});
+//     const upd = `UPDATE appointments SET status = 'cancelled' WHERE id = ?`;
+//     db.run(upd, [apptId], (err2) => {
+//       if (err2) return res.status(500).json({ success: false, error: err2.message });
+//       return res.json({ success: true, message: 'ยกเลิกนัดสำเร็จ' });
+//     });
+//   });
+// });
 
 /* =================== เลื่อนนัด (ยกเลิกเดิม + สร้างคำขอใหม่) =================== */
 router.post('/appointments/:id/reschedule', allowRoles('patient'), (req, res) => {
