@@ -1,82 +1,94 @@
-// routes/staff.js
+// routes/staff.js (MySQL version)
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { allowRoles } = require('../utils/auth');
+const db = require('../db'); // mysql2/promise (เหมือน auth.js)
+const { allowRoles } = require('../utils/auth'); // ← สำคัญ: ต้องมี!
 
-/* ---------- Helper: เลือกชื่อตารางยูนิตแบบอัตโนมัติ ---------- */
-function resolveUnitTable(cb) {
-  db.get(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name = 'dental_units';",
-    [],
-    (err, row) => {
-      if (err) return cb(err);
-      cb(null, row ? 'dental_units' : 'units');
-    }
-  );
+/* ========== Helper ========== */
+
+// ใช้ชื่อ table ยูนิตแบบตายตัว (ถ้าโปรเจกต์คุณใช้ 'units' ให้เปลี่ยนที่นี่จุดเดียว)
+const UNIT_TABLE = 'dental_units';
+
+// แปลงค่าพารามิเตอร์ page/pageSize ให้ปลอดภัย
+function toInt(v, def, min = 1, max = 1000) {
+  const n = parseInt(v, 10);
+  if (Number.isNaN(n)) return def;
+  return Math.min(Math.max(n, min), max);
 }
 
-/* ===============================
- * 🔹 Patients List + Pagination
- * =============================== */
-router.get('/patients', allowRoles('staff'), (req, res, next) => {
-  const searchQuery = req.query.search || '';
-  const page = parseInt(req.query.page, 10) || 1;
-  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 15, 5), 100);
-  const offset = (page - 1) * pageSize;
-  const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
+/* =========================================
+ * 🔹 Patients List + Pagination (MySQL)
+ * ========================================= */
+router.get('/patients', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const searchQuery = req.query.search || '';
+    const page = toInt(req.query.page, 1, 1, 100000);
+    const pageSize = toInt(req.query.pageSize, 15, 5, 100);
+    const offset = (page - 1) * pageSize;
+    const successMessage = req.query.success ? 'สร้างบัญชีผู้ป่วยใหม่สำเร็จแล้ว' : null;
 
-  let countSql = `SELECT COUNT(id) AS count FROM patients`;
-  let sql = `
-    SELECT id, pre_name, first_name, last_name, phone, 
-           printf('CN%04d', id) as clinic_number, 
-           strftime('%d/%m/%Y', created_at) as created_at,
-           (strftime('%Y', 'now') - strftime('%Y', birth_date)) - 
-           (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) AS age
-    FROM patients
-  `;
+    const params = [];
+    let where = '';
+    if (searchQuery) {
+      where = ` WHERE first_name LIKE ? OR last_name LIKE ? OR CONCAT('CN', LPAD(id, 4, '0')) LIKE ? `;
+      const t = `%${searchQuery}%`;
+      params.push(t, t, t);
+    }
 
-  const params = [];
-  if (searchQuery) {
-    const whereClause = ` WHERE first_name LIKE ? OR last_name LIKE ? OR printf('CN%04d', id) LIKE ? `;
-    countSql += whereClause;
-    sql += whereClause;
-    const t = `%${searchQuery}%`;
-    params.push(t, t, t);
-  }
-
-  db.get(countSql, params, (err, row) => {
-    if (err) return next(err);
-    const total = row?.count || 0;
+    const [[countRow]] = await db.query(
+      `SELECT COUNT(id) AS count FROM patients ${where}`, params
+    );
+    const total = countRow?.count || 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    sql += ` ORDER BY first_name, last_name LIMIT ? OFFSET ?;`;
-    db.all(sql, [...params, pageSize, offset], (err2, patients) => {
-      if (err2) return next(err2);
-      res.render('staff/index', {
-        patients,
-        user: req.user,
-        userRole: req.user.role,
-        searchQuery,
-        page,
-        pageSize,
-        total,
-        totalPages,
-        successMessage,
-        pageId: 'patients'
-      });
+    const [patients] = await db.query(
+      `
+      SELECT
+        id,
+        pre_name,
+        first_name,
+        last_name,
+        phone,
+        CONCAT('CN', LPAD(id, 4, '0')) AS clinic_number,
+        DATE_FORMAT(created_at, '%d/%m/%Y') AS created_at,
+        /* อายุแบบเป๊ะ (หักถ้ายังไม่ถึงวันเกิดปีนี้) */
+        TIMESTAMPDIFF(YEAR, birth_date, CURDATE())
+          - (DATE_FORMAT(CURDATE(), '%m-%d') < DATE_FORMAT(birth_date, '%m-%d')) AS age
+      FROM patients
+      ${where}
+      ORDER BY first_name, last_name
+      LIMIT ? OFFSET ?;
+      `,
+      [...params, pageSize, offset]
+    );
+
+    res.render('staff/index', {
+      patients,
+      user: req.user,
+      userRole: req.user.role,
+      searchQuery,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      successMessage,
+      pageId: 'patients'
     });
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ===============================
- * 🔹 Edit Patient
+ * 🔹 Edit Patient (MySQL)
  * =============================== */
-router.get('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
-  const patientId = req.params.id;
-  const sql = "SELECT *, printf('CN%04d', id) as clinic_number FROM patients WHERE id = ?";
-  db.get(sql, [patientId], (err, patient) => {
-    if (err) return next(err);
+router.get('/patients/:id/edit', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const patientId = req.params.id;
+    const [[patient]] = await db.query(
+      `SELECT *, CONCAT('CN', LPAD(id, 4, '0')) AS clinic_number FROM patients WHERE id = ?`,
+      [patientId]
+    );
     if (!patient) return res.status(404).send('Patient not found');
     res.render('staff/edit', {
       patient,
@@ -84,165 +96,153 @@ router.get('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
       userRole: req.user.role,
       page: 'patients'
     });
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.post('/patients/:id/edit', allowRoles('staff'), (req, res, next) => {
-  const patientId = req.params.id;
-  const {
-    pre_name, first_name, last_name, gender, birth_date,
-    phone, email, address, race, nationality, religion, drug_allergy
-  } = req.body;
+router.post('/patients/:id/edit', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const patientId = req.params.id;
+    const {
+      pre_name, first_name, last_name, gender, birth_date,
+      phone, email, address, race, nationality, religion, drug_allergy
+    } = req.body;
 
-  const sql = `
-    UPDATE patients SET
-      pre_name = ?, first_name = ?, last_name = ?, gender = ?, birth_date = ?,
-      phone = ?, email = ?, address = ?, race = ?, nationality = ?, religion = ?, drug_allergy = ?
-    WHERE id = ?
-  `;
-  const params = [
-    pre_name, first_name, last_name, gender, birth_date,
-    phone, email, address, race, nationality, religion, drug_allergy, patientId
-  ];
+    await db.query(
+      `
+      UPDATE patients SET
+        pre_name = ?, first_name = ?, last_name = ?, gender = ?, birth_date = ?,
+        phone = ?, email = ?, address = ?, race = ?, nationality = ?, religion = ?, drug_allergy = ?
+      WHERE id = ?
+      `,
+      [pre_name, first_name, last_name, gender, birth_date, phone, email, address, race, nationality, religion, drug_allergy, patientId]
+    );
 
-  db.run(sql, params, err => {
-    if (err) return next(err);
     res.redirect('/staff/patients');
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ===============================
- * 🔹 Payments
+ * 🔹 Payments (MySQL)
  * =============================== */
-router.get('/payments', allowRoles('staff'), (req, res, next) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const pageSize = parseInt(req.query.pageSize, 10) || 10;
-  const q = req.query.q || '';
-  const date_from = req.query.date_from || '';
-  const date_to = req.query.date_to || '';
-  const sort = req.query.sort || 'latest';
-  const offset = (page - 1) * pageSize;
+router.get('/payments', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const page = toInt(req.query.page, 1, 1, 100000);
+    const pageSize = toInt(req.query.pageSize, 10, 5, 100);
+    const q = req.query.q || '';
+    const date_from = req.query.date_from || '';
+    const date_to = req.query.date_to || '';
+    const sort = req.query.sort || 'latest';
+    const offset = (page - 1) * pageSize;
 
-  const whereClauses = [];
-  const params = [];
+    const whereClauses = [];
+    const params = [];
 
-  if (q) {
-    whereClauses.push("(pt.first_name LIKE ? OR pt.last_name LIKE ?)");
-    params.push(`%${q}%`, `%${q}%`);
-  }
-  if (date_from) {
-    whereClauses.push("date(p.payment_date) >= date(?)");
-    params.push(date_from);
-  }
-  if (date_to) {
-    whereClauses.push("date(p.payment_date) <= date(?)");
-    params.push(date_to);
-  }
+    if (q) {
+      whereClauses.push("(pt.first_name LIKE ? OR pt.last_name LIKE ?)");
+      params.push(`%${q}%`, `%${q}%`);
+    }
+    if (date_from) {
+      whereClauses.push("DATE(p.payment_date) >= DATE(?)");
+      params.push(date_from);
+    }
+    if (date_to) {
+      whereClauses.push("DATE(p.payment_date) <= DATE(?)");
+      params.push(date_to);
+    }
+    const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    let orderSql = "COALESCE(p.payment_date, '1000-01-01') DESC, p.id DESC";
+    switch (sort) {
+      case 'unpaid_first':
+        orderSql = `
+          CASE 
+            WHEN p.status = 'pending' THEN 0 
+            WHEN p.status = 'void'    THEN 1 
+            ELSE 2 
+          END ASC,
+          COALESCE(p.payment_date, '1000-01-01') DESC, p.id DESC
+        `;
+        break;
+      case 'amount_desc':
+        orderSql = "p.amount DESC, p.id DESC";
+        break;
+      case 'amount_asc':
+        orderSql = "p.amount ASC, p.id ASC";
+        break;
+    }
 
-  let orderSql = "COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC";
-  switch (sort) {
-    case 'unpaid_first':
-      orderSql = `
-        CASE 
-          WHEN p.status = 'pending' THEN 0 
-          WHEN p.status = 'void'    THEN 1 
-          ELSE 2 
-        END ASC,
-        COALESCE(p.payment_date, '0001-01-01') DESC, p.id DESC
-      `;
-      break;
-    case 'amount_desc':
-      orderSql = "p.amount DESC, p.id DESC";
-      break;
-    case 'amount_asc':
-      orderSql = "p.amount ASC, p.id ASC";
-      break;
-  }
-
-  const countSql = `
-    SELECT COUNT(p.id) AS total
-    FROM payments p
-    LEFT JOIN visits v ON p.visit_id = v.id
-    LEFT JOIN patients pt ON v.patient_id = pt.id
-    ${whereSql};
-  `;
-
-  const sql = `
-    SELECT 
-      p.id,
-      p.amount,
-      p.payment_date,
-      p.status,
-      pt.first_name || ' ' || pt.last_name AS patient_name
-    FROM payments p
-    LEFT JOIN visits v ON p.visit_id = v.id
-    LEFT JOIN patients pt ON v.patient_id = pt.id
-    ${whereSql}
-    ORDER BY ${orderSql}
-    LIMIT ? OFFSET ?;
-  `;
-
-  db.get(countSql, params, (err, row) => {
-    if (err) return next(err);
-    const total = row?.total || 0;
+    const [[countRow]] = await db.query(
+      `
+      SELECT COUNT(p.id) AS total
+      FROM payments p
+      LEFT JOIN visits v   ON p.visit_id = v.id
+      LEFT JOIN patients pt ON v.patient_id = pt.id
+      ${whereSql};
+      `,
+      params
+    );
+    const total = countRow?.total || 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    db.all(sql, [...params, pageSize, offset], (err2, rows) => {
-      if (err2) return next(err2);
-      res.render('staff/payments', {
-        user: req.user,
-        userRole: req.user.role,
-        payments: rows,
-        page,
-        pageSize,
-        total,
-        totalPages,
-        q,
-        date_from,
-        date_to,
-        sort
-      });
+    const [rows] = await db.query(
+      `
+      SELECT 
+        p.id,
+        p.amount,
+        p.payment_date,
+        p.status,
+        CONCAT_WS(' ', pt.first_name, pt.last_name) AS patient_name
+      FROM payments p
+      LEFT JOIN visits v    ON p.visit_id = v.id
+      LEFT JOIN patients pt ON v.patient_id = pt.id
+      ${whereSql}
+      ORDER BY ${orderSql}
+      LIMIT ? OFFSET ?;
+      `,
+      [...params, pageSize, offset]
+    );
+
+    res.render('staff/payments', {
+      user: req.user,
+      userRole: req.user.role,
+      payments: rows,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      q,
+      date_from,
+      date_to,
+      sort
     });
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
-  const paymentId = req.params.id;
-  
-  console.log('Processing payment completion for ID:', paymentId);
-  
-  // เก็บ query parameters เดิม
-  const queryParams = new URLSearchParams({
-    page: req.body.page || '1',
-    pageSize: req.body.pageSize || '10',
-    q: req.body.q || '',
-    date_from: req.body.date_from || '',
-    date_to: req.body.date_to || '',
-    sort: req.body.sort || 'latest',
-    success: 'ยืนยันการชำระเงินสำเร็จ'
-  }).toString();
+router.post('/payments/:id/complete', allowRoles('staff'), async (req, res, next) => {
+  try {
+    const paymentId = req.params.id;
 
-  const checkSql = `
-    SELECT id, status 
-    FROM payments 
-    WHERE id = ?;
-  `;
+    // เก็บ query เดิม
+    const queryParams = new URLSearchParams({
+      page: req.body.page || '1',
+      pageSize: req.body.pageSize || '10',
+      q: req.body.q || '',
+      date_from: req.body.date_from || '',
+      date_to: req.body.date_to || '',
+      sort: req.body.sort || 'latest',
+      success: 'ยืนยันการชำระเงินสำเร็จ'
+    }).toString();
 
-  db.get(checkSql, [paymentId], (err, row) => {
-    if (err) {
-      console.error('Database error:', err);
-      return next(err);
-    }
-    
-    if (!row) {
-      console.log('Payment not found:', paymentId);
-      return res.status(404).send('ไม่พบรายการชำระเงิน');
-    }
-    
+    const [[row]] = await db.query(`SELECT id, status FROM payments WHERE id = ?`, [paymentId]);
+    if (!row) return res.status(404).send('ไม่พบรายการชำระเงิน');
+
     if (row.status === 'paid') {
-      console.log('Payment already paid:', paymentId);
       const redirectUrl = `/staff/payments?${new URLSearchParams({
         ...req.body,
         success: 'รายการนี้ชำระแล้วอยู่แล้ว'
@@ -250,26 +250,15 @@ router.post('/payments/:id/complete', allowRoles('staff'), (req, res, next) => {
       return res.redirect(redirectUrl);
     }
 
-    // อัพเดทสถานะเป็นชำระแล้ว
-    const updSql = `
-      UPDATE payments
-      SET status = 'paid',
-          payment_date = datetime('now')
-      WHERE id = ?;
-    `;
-    
-    db.run(updSql, [paymentId], function(err2) {
-      if (err2) {
-        console.error('Update error:', err2);
-        return next(err2);
-      }
-      
-      console.log('Payment updated successfully:', paymentId);
-      
-      // Redirect กลับไปหน้ารายการชำระเงินพร้อมพารามิเตอร์เดิม
-      res.redirect(`/staff/payments?${queryParams}`);
-    });
-  });
+    await db.query(
+      `UPDATE payments SET status = 'paid', payment_date = NOW() WHERE id = ?`,
+      [paymentId]
+    );
+
+    res.redirect(`/staff/payments?${queryParams}`);
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ===============================
@@ -295,709 +284,393 @@ router.get('/queue', allowRoles('staff'), (req, res) => {
 });
 
 /* ===============================
- * 🔹 Queue Master Data - ดึงทันตแพทย์และยูนิต
+ * 🔹 Queue Master Data (MySQL)
  * =============================== */
-router.get('/queue-master-data', allowRoles('staff'), (req, res) => {
-  console.log('Loading queue master data...');
+router.get('/queue-master-data', allowRoles('staff'), async (req, res) => {
+  try {
+    const [dentists] = await db.query(
+      `
+      SELECT id,
+             CONCAT_WS(' ', pre_name, first_name, last_name) AS name,
+             license_number
+      FROM dentists
+      ORDER BY first_name, last_name
+      `
+    );
 
-  const dentistQuery = `
-    SELECT id, pre_name || ' ' || first_name || ' ' || last_name AS name, license_number
-    FROM dentists
-    ORDER BY first_name, last_name
-  `;
+    const [units] = await db.query(
+      `
+      SELECT id, unit_name
+      FROM ${UNIT_TABLE}
+      WHERE status = 'ACTIVE'
+      ORDER BY unit_name
+      `
+    );
 
-  const unitQuery = `
-    SELECT id, unit_name
-    FROM dental_units
-    WHERE status = 'ACTIVE'
-    ORDER BY unit_name
-  `;
-
-  db.all(dentistQuery, [], (err, dentists) => {
-    if (err) {
-      console.error('Error loading dentists:', err);
-      return res.status(500).json({ error: 'ไม่สามารถโหลดข้อมูลทันตแพทย์ได้' });
-    }
-
-    db.all(unitQuery, [], (err2, units) => {
-      if (err2) {
-        console.error('Error loading units:', err2);
-        return res.status(500).json({ error: 'ไม่สามารถโหลดข้อมูลยูนิตได้' });
-      }
-
-      console.log('Master data loaded:', { dentists: dentists.length, units: units.length });
-
-      res.json({
-        dentists: dentists || [],
-        units: units || []
-      });
-    });
-  });
-});
-
-/* ===============================
- * 🔹 Queue Data - ดึงข้อมูลคิวและนัดหมาย
- * =============================== */
-router.get('/queue-data', allowRoles('staff'), (req, res) => {
-  const { date } = req.query;
-  console.log('GET /staff/queue-data called with date:', date);
-
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required' });
+    res.json({ dentists: dentists || [], units: units || [] });
+  } catch (err) {
+    console.error('queue-master-data error:', err);
+    res.status(500).json({ error: 'ไม่สามารถโหลดข้อมูล master ได้' });
   }
-
-  // ดึงข้อมูลคิวจาก appointment_requests (สถานะ NEW)
-  const queueItemsQuery = `
-    SELECT ar.id, ar.patient_id, ar.requested_date as date, 
-           ar.requested_time_slot as time, ar.treatment as service_description,
-           ar.status, ar.notes, ar.created_at,
-           p.first_name, p.last_name, p.pre_name, p.phone
-    FROM appointment_requests ar
-    LEFT JOIN patients p ON ar.patient_id = p.id
-    WHERE ar.requested_date = ? AND ar.status = 'NEW'
-    ORDER BY ar.requested_time_slot, ar.created_at
-  `;
-
-  // ดึงข้อมูลนัดหมายที่จัดแล้วจาก appointments
-  const appointmentsQuery = `
-    SELECT a.id, a.patient_id, a.dentist_id, a.unit_id, 
-           a.date, a.slot_text as slot, a.status,
-           p.first_name, p.last_name, p.pre_name,
-           d.pre_name as doc_pre_name, d.first_name as doc_first_name, d.last_name as doc_last_name,
-           du.unit_name
-    FROM appointments a
-    LEFT JOIN patients p ON a.patient_id = p.id
-    LEFT JOIN dentists d ON a.dentist_id = d.id
-    LEFT JOIN dental_units du ON a.unit_id = du.id
-    WHERE a.date = ? AND a.status IN ('confirmed', 'pending')
-    ORDER BY a.slot_text
-  `;
-
-  // ดึงข้อมูลความว่างของทันตแพทย์จาก dentist_schedules
-  const availabilityQuery = `
-    SELECT ds.dentist_id, ds.unit_id, ds.schedule_date as date, 
-           ds.time_slot as slot_text, ds.status,
-           d.pre_name || ' ' || d.first_name || ' ' || d.last_name AS dentist_name,
-           du.unit_name
-    FROM dentist_schedules ds
-    JOIN dentists d ON ds.dentist_id = d.id
-    JOIN dental_units du ON ds.unit_id = du.id
-    WHERE ds.schedule_date = ? AND ds.status = 'AVAILABLE'
-  `;
-
-  db.all(queueItemsQuery, [date], (err, queueItems) => {
-    if (err) {
-      console.error('Queue items query error:', err);
-      return res.status(500).json({ error: 'Database error: ' + err.message });
-    }
-
-    db.all(appointmentsQuery, [date], (err2, appointments) => {
-      if (err2) {
-        console.error('Appointments query error:', err2);
-        return res.status(500).json({ error: 'Database error: ' + err2.message });
-      }
-
-      db.all(availabilityQuery, [date], (err3, availability) => {
-        if (err3) {
-          console.error('Availability query error:', err3);
-          availability = [];
-        }
-
-        const formattedQueueItems = queueItems.map(item => ({
-          ...item,
-          service: item.service_description,
-          status: item.status ? item.status.toLowerCase() : 'new'
-        }));
-
-        console.log('Queue data:', {
-          queueItems: formattedQueueItems.length,
-          appointments: appointments.length,
-          availability: availability.length
-        });
-
-        res.json({
-          queueItems: formattedQueueItems,
-          appointments: appointments,
-          availability: availability
-        });
-      });
-    });
-  });
 });
 
 /* ===============================
- * 🔹 Check Real-time Availability - ตรวจสอบความว่างแบบเรียลไทม์ (แก้ไขใหม่)
+ * 🔹 Queue Data - requests/appointments/availability
  * =============================== */
-router.get('/check-real-time-availability', allowRoles('staff'), (req, res) => {
+router.get('/queue-data', allowRoles('staff'), async (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'Date is required' });
+
+  try {
+    // NEW requests
+    const [queueItems] = await db.query(
+      `
+      SELECT ar.id, ar.patient_id, ar.requested_date AS date,
+             ar.requested_time_slot AS time, ar.treatment AS service_description,
+             ar.status, ar.notes, ar.created_at,
+             p.first_name, p.last_name, p.pre_name, p.phone
+      FROM appointment_requests ar
+      LEFT JOIN patients p ON ar.patient_id = p.id
+      WHERE ar.requested_date = ? AND ar.status = 'NEW'
+      ORDER BY ar.requested_time_slot, ar.created_at
+      `,
+      [date]
+    );
+
+    // appointments (confirmed/pending)
+    const [appointments] = await db.query(
+      `
+      SELECT a.id, a.patient_id, a.dentist_id, a.unit_id,
+             a.date, a.slot_text AS slot, a.status,
+             p.first_name, p.last_name, p.pre_name,
+             d.pre_name AS doc_pre_name, d.first_name AS doc_first_name, d.last_name AS doc_last_name,
+             du.unit_name
+      FROM appointments a
+      LEFT JOIN patients p ON a.patient_id = p.id
+      LEFT JOIN dentists d ON a.dentist_id = d.id
+      LEFT JOIN ${UNIT_TABLE} du ON a.unit_id = du.id
+      WHERE a.date = ? AND a.status IN ('confirmed', 'pending')
+      ORDER BY a.slot_text
+      `,
+      [date]
+    );
+
+    // availability
+    const [availability] = await db.query(
+      `
+      SELECT ds.dentist_id, ds.unit_id, ds.schedule_date AS date,
+             ds.time_slot AS slot_text, ds.status,
+             CONCAT_WS(' ', d.pre_name, d.first_name, d.last_name) AS dentist_name,
+             du.unit_name
+      FROM dentist_schedules ds
+      JOIN dentists d ON ds.dentist_id = d.id
+      JOIN ${UNIT_TABLE} du ON ds.unit_id = du.id
+      WHERE ds.schedule_date = ? AND ds.status = 'AVAILABLE'
+      `,
+      [date]
+    );
+
+    const formattedQueueItems = (queueItems || []).map(item => ({
+      ...item,
+      service: item.service_description,
+      status: item.status ? item.status.toLowerCase() : 'new'
+    }));
+
+    res.json({
+      queueItems: formattedQueueItems,
+      appointments,
+      availability
+    });
+  } catch (err) {
+    console.error('queue-data error:', err);
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
+});
+
+/* ===============================
+ * 🔹 Check Real-time Availability (MySQL)
+ * =============================== */
+router.get('/check-real-time-availability', allowRoles('staff'), async (req, res) => {
   const { date, dentistId, unitId, slot } = req.query;
-
-  console.log('Checking real-time availability for:', { date, dentistId, unitId, slot });
-
   if (!date || !dentistId || !unitId || !slot) {
     return res.status(400).json({ error: 'Missing required parameters' });
   }
+  try {
+    const [[avail]] = await db.query(
+      `
+      SELECT id FROM dentist_schedules
+      WHERE schedule_date = ? AND dentist_id = ? AND unit_id = ? AND time_slot = ? AND status = 'AVAILABLE'
+      `,
+      [date, dentistId, unitId, slot]
+    );
 
-  // 1. ตรวจสอบใน dentist_schedules ว่าว่างหรือไม่
-  const availabilityQuery = `
-    SELECT status 
-    FROM dentist_schedules 
-    WHERE schedule_date = ? AND dentist_id = ? AND unit_id = ? AND time_slot = ? AND status = 'AVAILABLE'
-  `;
-
-  // 2. ตรวจสอบใน appointments ว่ามีนัดหมายแล้วหรือไม่ (double check)
-  const appointmentQuery = `
-    SELECT id 
-    FROM appointments 
-    WHERE date = ? AND dentist_id = ? AND unit_id = ? AND slot_text = ? AND status IN ('confirmed', 'pending')
-  `;
-
-  db.get(availabilityQuery, [date, dentistId, unitId, slot], (err, availRow) => {
-    if (err) {
-      console.error('Availability check error:', err);
-      return res.status(500).json({ error: 'Database error' });
+    if (!avail) {
+      return res.json({ available: false, reason: 'ทันตแพทย์หรือห้องไม่ว่างในช่วงเวลานี้' });
     }
 
-    // ถ้าไม่ว่างใน dentist_schedules
-    if (!availRow) {
-      return res.json({
-        available: false,
-        reason: 'ทันตแพทย์หรือห้องไม่ว่างในช่วงเวลานี้'
-      });
+    const [[dup]] = await db.query(
+      `
+      SELECT id FROM appointments
+      WHERE date = ? AND dentist_id = ? AND unit_id = ? AND slot_text = ? AND status IN ('confirmed', 'pending')
+      `,
+      [date, dentistId, unitId, slot]
+    );
+
+    if (dup) {
+      return res.json({ available: false, reason: 'มีนัดหมายในช่วงเวลานี้แล้ว' });
     }
 
-    // Double check ใน appointments
-    db.get(appointmentQuery, [date, dentistId, unitId, slot], (err2, apptRow) => {
-      if (err2) {
-        console.error('Appointment check error:', err2);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      // ถ้ามีนัดหมายแล้ว
-      if (apptRow) {
-        return res.json({
-          available: false,
-          reason: 'มีนัดหมายในช่วงเวลานี้แล้ว'
-        });
-      }
-
-      // ว่างจริงๆ
-      res.json({
-        available: true,
-        reason: 'ว่าง สามารถจองได้'
-      });
-    });
-  });
+    res.json({ available: true, reason: 'ว่าง สามารถจองได้' });
+  } catch (err) {
+    console.error('check-real-time-availability error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-
 /* ===============================
- * 🔹 Get Dentist Unit Assignment - ดูว่าหมออยู่ห้องไหน
+ * 🔹 Dentist Unit Assignment
  * =============================== */
-router.get('/dentist-unit-assignment', allowRoles('staff'), (req, res) => {
+router.get('/dentist-unit-assignment', allowRoles('staff'), async (req, res) => {
   const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'Date is required' });
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT 
+        ds.dentist_id,
+        ds.unit_id,
+        ds.time_slot AS slot_text,
+        CONCAT_WS(' ', d.pre_name, d.first_name, d.last_name) AS dentist_name,
+        du.unit_name,
+        ds.status
+      FROM dentist_schedules ds
+      JOIN dentists d ON ds.dentist_id = d.id
+      JOIN ${UNIT_TABLE} du ON ds.unit_id = du.id
+      WHERE ds.schedule_date = ? AND ds.status = 'AVAILABLE'
+      ORDER BY ds.dentist_id, ds.time_slot
+      `,
+      [date]
+    );
 
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required' });
-  }
-
-  const query = `
-    SELECT 
-      ds.dentist_id,
-      ds.unit_id,
-      ds.time_slot as slot_text,
-      d.pre_name || ' ' || d.first_name || ' ' || d.last_name AS dentist_name,
-      du.unit_name,
-      ds.status
-    FROM dentist_schedules ds
-    JOIN dentists d ON ds.dentist_id = d.id
-    JOIN dental_units du ON ds.unit_id = du.id
-    WHERE ds.schedule_date = ? AND ds.status = 'AVAILABLE'
-    ORDER BY ds.dentist_id, ds.time_slot
-  `;
-
-  db.all(query, [date], (err, rows) => {
-    if (err) {
-      console.error('Dentist unit assignment query error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-
-    // จัดกลุ่มข้อมูลตามทันตแพทย์
     const assignment = {};
-    rows.forEach(row => {
+    (rows || []).forEach(row => {
       if (!assignment[row.dentist_id]) {
-        assignment[row.dentist_id] = {
-          dentist_name: row.dentist_name,
-          units: {}
-        };
+        assignment[row.dentist_id] = { dentist_name: row.dentist_name, units: {} };
       }
-
       if (!assignment[row.dentist_id].units[row.unit_id]) {
-        assignment[row.dentist_id].units[row.unit_id] = {
-          unit_name: row.unit_name,
-          slots: []
-        };
+        assignment[row.dentist_id].units[row.unit_id] = { unit_name: row.unit_name, slots: [] };
       }
-
       assignment[row.dentist_id].units[row.unit_id].slots.push(row.slot_text);
     });
 
-    res.json({
-      date: date,
-      assignment: assignment
-    });
-  });
+    res.json({ date, assignment });
+  } catch (err) {
+    console.error('dentist-unit-assignment error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-
-
 /* ===============================
- * 🔹 Assign Queue - บันทึกการจัดคิว (แก้ไขใหม่)
+ * 🔹 Assign Queue (Transaction, MySQL)
  * =============================== */
-router.post('/assign-queue', allowRoles('staff'), (req, res) => {
+router.post('/assign-queue', allowRoles('staff'), async (req, res) => {
   const { requestId, patientId, dentistId, unitId, date, slot, serviceDescription } = req.body;
-
-  console.log('Assign queue with payload:', { requestId, patientId, dentistId, unitId, date, slot });
-
   if (!requestId || !patientId || !dentistId || !unitId || !date || !slot) {
     return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน' });
   }
 
-  // สร้าง start_time และ end_time ก่อน (อยู่นอก callback)
-  const [startHour] = slot.split('-');
-  const startTime = `${date} ${startHour}:00`;
-  const endTime = `${date} ${slot.split('-')[1]}:00`;
+  // คำนวณเวลาเริ่ม/สิ้นสุดจาก slot รูปแบบ "HH:MM-HH:MM" (คุณส่งมาเป็น "09-10" ก็ปรับ parser ตามจริง)
+  // ที่นี่สมมติว่า slot = "09:00-10:00"
+  const [startStr, endStr] = slot.split('-');
+  const startTime = `${date} ${startStr}:00`.replace(':00:00', ':00'); // เผื่อส่งมาเป็น "09-10" ให้แก้ parser
+  const endTime = `${date} ${endStr}:00`.replace(':00:00', ':00');
 
-  console.log('=== DEBUG: Creating Appointment ===');
-  console.log('Slot:', slot);
-  console.log('Date:', date);
-  console.log('Start Time:', startTime);
-  console.log('End Time:', endTime);
-  console.log('Patient ID:', patientId);
-  console.log('Dentist ID:', dentistId);
-  console.log('Unit ID:', unitId);
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
 
-  // 1. ตรวจสอบ appointment_requests ว่ามีอยู่และสถานะเป็น NEW
-  const checkRequestQuery = `SELECT id, patient_id FROM appointment_requests WHERE id = ? AND status = 'NEW'`;
-  
-  console.log('🔍 Checking appointment request...');
-  db.get(checkRequestQuery, [requestId], (err, requestRow) => {
-    if (err) {
-      console.error('❌ Check request error:', err);
-      return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบคำขอนัดหมาย' });
-    }
-    
-    if (!requestRow) {
-      console.log('❌ Request not found or already scheduled');
+    // 1) ตรวจสอบ request ต้องเป็น NEW
+    const [[reqRow]] = await conn.query(
+      `SELECT id, patient_id FROM appointment_requests WHERE id = ? AND status = 'NEW' FOR UPDATE`,
+      [requestId]
+    );
+    if (!reqRow) {
+      await conn.rollback();
       return res.status(400).json({ error: 'ไม่พบคำขอนัดหมายหรือถูกจัดคิวแล้ว' });
     }
-
-    console.log('✅ Request found:', requestRow);
-
-    // 2. ตรวจสอบ patient_id ตรงกับที่ส่งมาหรือไม่
-    if (parseInt(requestRow.patient_id) !== parseInt(patientId)) {
-      console.log('❌ Patient ID mismatch');
+    if (parseInt(reqRow.patient_id) !== parseInt(patientId)) {
+      await conn.rollback();
       return res.status(400).json({ error: 'ข้อมูลผู้ป่วยไม่ตรงกับคำขอนัดหมาย' });
     }
 
-    // 3. ตรวจสอบ dentists
-    const checkDentistQuery = `SELECT id FROM dentists WHERE id = ?`;
-    console.log('🔍 Checking dentist...');
-    db.get(checkDentistQuery, [dentistId], (err, dentistRow) => {
-      if (err) {
-        console.error('❌ Check dentist error:', err);
-        return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบทันตแพทย์' });
-      }
-      
-      if (!dentistRow) {
-        console.log('❌ Dentist not found');
-        return res.status(400).json({ error: 'ไม่พบข้อมูลทันตแพทย์' });
-      }
+    // 2) ตรวจ Dentist / Unit / Patient มีจริง
+    const [[dentist]] = await conn.query(`SELECT id FROM dentists WHERE id = ?`, [dentistId]);
+    if (!dentist) { await conn.rollback(); return res.status(400).json({ error: 'ไม่พบข้อมูลทันตแพทย์' }); }
 
-      console.log('✅ Dentist found');
+    const [[unit]] = await conn.query(`SELECT id FROM ${UNIT_TABLE} WHERE id = ?`, [unitId]);
+    if (!unit) { await conn.rollback(); return res.status(400).json({ error: 'ไม่พบข้อมูลหน่วยทันตกรรม' }); }
 
-      // 4. ตรวจสอบ dental_units
-      const checkUnitQuery = `SELECT id FROM dental_units WHERE id = ?`;
-      console.log('🔍 Checking dental unit...');
-      db.get(checkUnitQuery, [unitId], (err, unitRow) => {
-        if (err) {
-          console.error('❌ Check unit error:', err);
-          return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบหน่วยทันตกรรม' });
-        }
-        
-        if (!unitRow) {
-          console.log('❌ Unit not found');
-          return res.status(400).json({ error: 'ไม่พบข้อมูลหน่วยทันตกรรม' });
-        }
+    const [[patient]] = await conn.query(`SELECT id FROM patients WHERE id = ?`, [patientId]);
+    if (!patient) { await conn.rollback(); return res.status(400).json({ error: 'ไม่พบข้อมูลผู้ป่วย' }); }
 
-        console.log('✅ Unit found');
+    // 3) ตรวจว่าว่างใน dentist_schedules
+    const [[sched]] = await conn.query(
+      `
+      SELECT id FROM dentist_schedules
+      WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ? AND status = 'AVAILABLE'
+      FOR UPDATE
+      `,
+      [dentistId, unitId, date, slot]
+    );
+    if (!sched) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'ช่วงเวลานี้ไม่ว่างแล้ว กรุณาเลือกเวลาอื่น' });
+    }
 
-        // 5. ตรวจสอบ patients
-        const checkPatientQuery = `SELECT id FROM patients WHERE id = ?`;
-        console.log('🔍 Checking patient...');
-        db.get(checkPatientQuery, [patientId], (err, patientRow) => {
-          if (err) {
-            console.error('❌ Check patient error:', err);
-            return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบผู้ป่วย' });
-          }
-          
-          if (!patientRow) {
-            console.log('❌ Patient not found');
-            return res.status(400).json({ error: 'ไม่พบข้อมูลผู้ป่วย' });
-          }
+    // 4) Double check ไม่มีนัดชน
+    const [[dup]] = await conn.query(
+      `
+      SELECT id FROM appointments
+      WHERE date = ? AND dentist_id = ? AND unit_id = ? AND slot_text = ? AND status IN ('confirmed', 'pending')
+      FOR UPDATE
+      `,
+      [date, dentistId, unitId, slot]
+    );
+    if (dup) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'มีนัดหมายในช่วงเวลานี้แล้ว' });
+    }
 
-          console.log('✅ Patient found');
+    // 5) Insert appointments
+    const [ins] = await conn.query(
+      `
+      INSERT INTO appointments (
+        patient_id, dentist_id, unit_id,
+        start_time, end_time, date, slot_text,
+        status, notes, from_request_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
+      `,
+      [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId]
+    );
+    const appointmentId = ins.insertId;
 
-          // 6. ตรวจสอบ dentist_schedules ว่าว่างจริงๆ
-          const checkScheduleQuery = `
-            SELECT id FROM dentist_schedules 
-            WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ? AND status = 'AVAILABLE'
-          `;
+    // 6) Update schedule → BOOKED
+    await conn.query(
+      `
+      UPDATE dentist_schedules
+      SET status = 'BOOKED', updated_at = NOW()
+      WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
+      `,
+      [dentistId, unitId, date, slot]
+    );
 
-          console.log('🔍 Checking dentist schedule...');
-          db.get(checkScheduleQuery, [dentistId, unitId, date, slot], (err, scheduleRow) => {
-            if (err) {
-              console.error('❌ Check schedule error:', err);
-              return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบตารางเวลาทันตแพทย์' });
-            }
+    // 7) Update request → SCHEDULED
+    await conn.query(
+      `UPDATE appointment_requests SET status = 'SCHEDULED' WHERE id = ? AND status = 'NEW'`,
+      [requestId]
+    );
 
-            // if (!scheduleRow) {
-            //   console.log('❌ Schedule not available');
-            //   return res.status(400).json({ error: 'ช่วงเวลานี้ไม่ว่างแล้ว กรุณาเลือกเวลาอื่น' });
-            // }
-
-            console.log('✅ Schedule available');
-
-            // 7. ตรวจสอบซ้ำใน appointments (double check)
-            const checkAppointmentQuery = `
-              SELECT id FROM appointments 
-              WHERE date = ? AND dentist_id = ? AND unit_id = ? AND slot_text = ? AND status IN ('confirmed', 'pending')
-            `;
-
-            console.log('🔍 Checking existing appointments...');
-            db.get(checkAppointmentQuery, [date, dentistId, unitId, slot], (err, appointmentRow) => {
-              if (err) {
-                console.error('❌ Check appointment error:', err);
-                return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบนัดหมาย' });
-              }
-
-              // if (appointmentRow) {
-              //   console.log('❌ Found existing appointment:', appointmentRow);
-              //   return res.status(400).json({ error: 'มีนัดหมายในช่วงเวลานี้แล้ว' });
-              // }
-
-              console.log('✅ No existing appointments found');
-
-              // ข้อมูลถูกต้องทั้งหมด, ทำการบันทึก
-              console.log('🎉 All checks passed, creating appointment...');
-
-              // สร้างนัดหมายใน appointments
-              const insertAppointmentQuery = `
-                INSERT INTO appointments (
-                  patient_id, dentist_id, unit_id, 
-                  start_time, end_time, date, slot_text,
-                  status, notes, from_request_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
-              `;
-
-              console.log('📝 Executing INSERT query...');
-              console.log('Parameters:', [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId]);
-
-              db.run(
-                insertAppointmentQuery,
-                [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId],
-                function (err) {
-                  // if (err) {
-                  //   console.error('❌ INSERT FAILED:', err);
-                  //   console.error('Error details:', err.message);
-                  //   return res.status(500).json({ 
-                  //     success: false,
-                  //     error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message 
-                  //   });
-                  // }
-
-                  const appointmentId = this.lastID;
-                  console.log('✅ INSERT SUCCESS! Appointment created with ID:', appointmentId);
-
-                  // อัปเดต dentist_schedules เป็น BOOKED
-                  const updateScheduleQuery = `
-                    UPDATE dentist_schedules 
-                    SET status = 'BOOKED', updated_at = datetime('now')
-                    WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
-                  `;
-
-                  console.log('📝 Updating dentist schedule...');
-                  db.run(updateScheduleQuery, [dentistId, unitId, date, slot], function(scheduleErr) {
-                    if (scheduleErr) {
-                      console.log('ℹ️ Note: Could not update dentist_schedules:', scheduleErr.message);
-                    } else {
-                      if (this.changes > 0) {
-                        console.log('✅ Dentist schedule updated to BOOKED');
-                      } else {
-                        console.log('ℹ️ Dentist schedule was already booked or not found');
-                      }
-                    }
-
-                    // อัปเดต appointment_requests เป็น SCHEDULED
-                    const updateRequestQuery = `
-                      UPDATE appointment_requests 
-                      SET status = 'SCHEDULED' 
-                      WHERE id = ? AND status = 'NEW'
-                    `;
-
-                    console.log('📝 Updating appointment request...');
-                    db.run(updateRequestQuery, [requestId], function(requestErr) {
-                      if (requestErr) {
-                        console.log('ℹ️ Note: Could not update appointment_requests:', requestErr.message);
-                      } else {
-                        if (this.changes > 0) {
-                          console.log('✅ Appointment request updated to SCHEDULED');
-                        } else {
-                          console.log('ℹ️ Appointment request was already scheduled or not found');
-                        }
-                      }
-
-                      console.log('🎉 QUEUE ASSIGNED SUCCESSFULLY!');
-                      res.json({
-                        success: true,
-                        message: 'จัดคิวสำเร็จ',
-                        appointmentId: appointmentId
-                      });
-                    });
-                  });
-                }
-              );
-            });
-          });
-        });
-      });
-    });
-  });
-});
-
-/* ===============================
-* 🔹 Debug Data - สำหรับตรวจสอบข้อมูลพื้นฐาน
-* =============================== */
-router.get('/debug-data', allowRoles('staff'), (req, res) => {
-  const results = {};
-
-  // ดึงข้อมูลทั้งหมดเพื่อตรวจสอบ
-  const queries = {
-    dentists: 'SELECT id, pre_name, first_name, last_name FROM dentists LIMIT 10',
-    units: 'SELECT id, unit_name FROM dental_units LIMIT 10',
-    patients: 'SELECT id, first_name, last_name FROM patients LIMIT 10',
-    requests: 'SELECT id, patient_id, requested_date, requested_time_slot FROM appointment_requests WHERE status = "NEW" LIMIT 10',
-    schedules: 'SELECT dentist_id, unit_id, schedule_date, time_slot, status FROM dentist_schedules LIMIT 10'
-  };
-
-  function runQuery(key, callback) {
-    db.all(queries[key], [], (err, rows) => {
-      results[key] = err ? { error: err.message } : rows;
-      callback();
-    });
+    await conn.commit();
+    res.json({ success: true, message: 'จัดคิวสำเร็จ', appointmentId });
+  } catch (err) {
+    console.error('assign-queue error:', err);
+    try { await conn.rollback(); } catch (_) {}
+    res.status(500).json({ success: false, error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message });
+  } finally {
+    conn.release();
   }
-
-  // รัน queries ทั้งหมด
-  runQuery('dentists', () => {
-    runQuery('units', () => {
-      runQuery('patients', () => {
-        runQuery('requests', () => {
-          runQuery('schedules', () => {
-            res.json(results);
-          });
-        });
-      });
-    });
-  });
 });
 
-// สร้างนัดหมาย
-// function createAppointmentNow() {
-//   console.log('=== DEBUG: Creating Appointment ===');
-//   console.log('Slot:', slot);
-//   console.log('Date:', date);
-//   console.log('Patient ID:', patientId);
-//   console.log('Dentist ID:', dentistId);
-//   console.log('Unit ID:', unitId);
-
-//   // สร้าง start_time และ end_time
-//   const [startHour] = slot.split('-');
-//   const startTime = `${date} ${startHour}:00`;
-//   const endTime = `${date} ${slot.split('-')[1]}:00`;
-
-//   console.log('Start Time:', startTime);
-//   console.log('End Time:', endTime);
-
-//   // 1. สร้างนัดหมายใน appointments
-//   const insertAppointmentQuery = `
-//     INSERT INTO appointments (
-//       patient_id, dentist_id, unit_id, 
-//       start_time, end_time, date, slot_text,
-//       status, notes, from_request_id
-//     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
-//   `;
-
-//   console.log('SQL Query:', insertAppointmentQuery);
-
-//   db.run(
-//     insertAppointmentQuery,
-//     [patientId, dentistId, unitId, startTime, endTime, date, slot, serviceDescription || '', requestId],
-//     function (err) {
-//       if (err) {
-//         console.error('❌ Insert appointment error:', err);
-//         console.error('Error details:', err.message);
-        
-//         // ส่ง error response ที่ถูกต้อง
-//         return res.status(500).json({ 
-//           success: false,
-//           error: 'ไม่สามารถสร้างนัดหมายได้: ' + err.message 
-//         });
-//       }
-
-//       const appointmentId = this.lastID;
-//       console.log('✅ Appointment created with ID:', appointmentId);
-
-//       // 2. อัปเดต dentist_schedules เป็น BOOKED
-//       const updateScheduleQuery = `
-//         UPDATE dentist_schedules 
-//         SET status = 'BOOKED', updated_at = datetime('now')
-//         WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
-//       `;
-
-//       db.run(updateScheduleQuery, [dentistId, unitId, date, slot], function(scheduleErr) {
-//         if (scheduleErr) {
-//           console.log('ℹ️ Note: Could not update dentist_schedules:', scheduleErr.message);
-//         } else {
-//           if (this.changes > 0) {
-//             console.log('✅ Dentist schedule updated to BOOKED');
-//           } else {
-//             console.log('ℹ️ Dentist schedule was already booked or not found');
-//           }
-//         }
-
-//         // 3. อัปเดต appointment_requests เป็น SCHEDULED
-//         const updateRequestQuery = `
-//           UPDATE appointment_requests 
-//           SET status = 'SCHEDULED' 
-//           WHERE id = ? AND status = 'NEW'
-//         `;
-
-//         db.run(updateRequestQuery, [requestId], function(requestErr) {
-//           if (requestErr) {
-//             console.log('ℹ️ Note: Could not update appointment_requests:', requestErr.message);
-//           } else {
-//             if (this.changes > 0) {
-//               console.log('✅ Appointment request updated to SCHEDULED');
-//             } else {
-//               console.log('ℹ️ Appointment request was already scheduled or not found');
-//             }
-//           }
-
-//           console.log('🎉 QUEUE ASSIGNED SUCCESSFULLY!');
-//           // ส่ง response สำเร็จ
-//           res.json({
-//             success: true,
-//             message: 'จัดคิวสำเร็จ',
-//             appointmentId: appointmentId
-//           });
-//         });
-//       });
-//     }
-//   );
-// }
-
-
-
 /* ===============================
- * 🔹 Unit API
+ * 🔹 Debug Data
  * =============================== */
-router.get('/api/units', allowRoles('staff'), (req, res, next) => {
-  resolveUnitTable((err, tableName) => {
-    if (err) return next(err);
-    db.all(`SELECT id, unit_name, status FROM ${tableName} ORDER BY id`, [], (e, rows) => {
-      if (e) return res.status(500).json({ error: 'Database error while fetching units.' });
-      res.json(rows);
+router.get('/debug-data', allowRoles('staff'), async (req, res) => {
+  try {
+    const [dentists]  = await db.query('SELECT id, pre_name, first_name, last_name FROM dentists LIMIT 10');
+    const [units]     = await db.query(`SELECT id, unit_name FROM ${UNIT_TABLE} LIMIT 10`);
+    const [patients]  = await db.query('SELECT id, first_name, last_name FROM patients LIMIT 10');
+    const [requests]  = await db.query(`SELECT id, patient_id, requested_date, requested_time_slot FROM appointment_requests WHERE status = 'NEW' LIMIT 10`);
+    const [schedules] = await db.query('SELECT dentist_id, unit_id, schedule_date, time_slot, status FROM dentist_schedules LIMIT 10');
+
+    res.json({ dentists, units, patients, requests, schedules });
+  } catch (err) {
+    res.json({
+      dentists: { error: err.message },
+      units: { error: err.message },
+      patients: { error: err.message },
+      requests: { error: err.message },
+      schedules: { error: err.message }
     });
-  });
+  }
 });
 
-router.post('/api/units', allowRoles('staff'), (req, res, next) => {
-  const { unit_name, status } = req.body;
-  if (!unit_name) {
-    return res.status(400).json({ error: 'Unit name is required.' });
+/* ===============================
+ * 🔹 Unit API (MySQL)
+ * =============================== */
+router.get('/api/units', allowRoles('staff'), async (req, res) => {
+  try {
+    const [rows] = await db.query(`SELECT id, unit_name, status FROM ${UNIT_TABLE} ORDER BY id`);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'Database error while fetching units.' });
   }
-  resolveUnitTable((err, tableName) => {
-    if (err) return next(err);
-    const sql = `INSERT INTO ${tableName} (unit_name, status) VALUES (?, ?)`;
-    db.run(sql, [unit_name, status || 'ACTIVE'], function (e) {
-      if (e) {
-        return res.status(500).json({ error: 'Database error while creating a unit.' });
-      }
-      res.status(201).json({ id: this.lastID, unit_name, status: status || 'ACTIVE' });
-    });
-  });
 });
 
-router.put('/api/units/:id', allowRoles('staff'), (req, res, next) => {
-  const { id } = req.params;
-  const { unit_name, status } = req.body;
+router.post('/api/units', allowRoles('staff'), async (req, res) => {
+  try {
+    const { unit_name, status } = req.body;
+    if (!unit_name) return res.status(400).json({ error: 'Unit name is required.' });
 
-  if (!unit_name && !status) {
-    return res.status(400).json({ error: 'Either unit_name or status is required for update.' });
+    const [result] = await db.query(
+      `INSERT INTO ${UNIT_TABLE} (unit_name, status) VALUES (?, ?)`,
+      [unit_name, status || 'ACTIVE']
+    );
+    res.status(201).json({ id: result.insertId, unit_name, status: status || 'ACTIVE' });
+  } catch (e) {
+    res.status(500).json({ error: 'Database error while creating a unit.' });
   }
+});
 
-  resolveUnitTable((err, tableName) => {
-    if (err) return next(err);
+router.put('/api/units/:id', allowRoles('staff'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { unit_name, status } = req.body;
+    if (!unit_name && !status) {
+      return res.status(400).json({ error: 'Either unit_name or status is required for update.' });
+    }
 
-    let sql = `UPDATE ${tableName} SET `;
+    // สร้าง dynamic SQL แบบง่าย
+    const sets = [];
     const params = [];
-
-    if (unit_name) {
-      sql += 'unit_name = ? ';
-      params.push(unit_name);
-    }
-    if (status) {
-      if (unit_name) sql += ', ';
-      sql += 'status = ? ';
-      params.push(status);
-    }
-
-    sql += 'WHERE id = ?';
+    if (unit_name) { sets.push('unit_name = ?'); params.push(unit_name); }
+    if (status)    { sets.push('status = ?');    params.push(status); }
     params.push(id);
 
-    db.run(sql, params, function (e) {
-      if (e) {
-        return res.status(500).json({ error: 'Database error while updating the unit.' });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Unit not found.' });
-      }
-      res.json({ message: 'Unit updated successfully.' });
-    });
-  });
+    const [r] = await db.query(
+      `UPDATE ${UNIT_TABLE} SET ${sets.join(', ')} WHERE id = ?`,
+      params
+    );
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'Unit not found.' });
+    res.json({ message: 'Unit updated successfully.' });
+  } catch (e) {
+    res.status(500).json({ error: 'Database error while updating the unit.' });
+  }
 });
 
-router.delete('/api/units/:id', allowRoles('staff'), (req, res, next) => {
-  const { id } = req.params;
-  resolveUnitTable((err, tableName) => {
-    if (err) return next(err);
-    const sql = `DELETE FROM ${tableName} WHERE id = ?`;
-    db.run(sql, [id], function (e) {
-      if (e) {
-        return res.status(500).json({ error: 'Database error while deleting the unit.' });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Unit not found.' });
-      }
-      res.json({ message: 'Unit deleted successfully.' });
-    });
-  });
+router.delete('/api/units/:id', allowRoles('staff'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [r] = await db.query(`DELETE FROM ${UNIT_TABLE} WHERE id = ?`, [id]);
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'Unit not found.' });
+    res.json({ message: 'Unit deleted successfully.' });
+  } catch (e) {
+    res.status(500).json({ error: 'Database error while deleting the unit.' });
+  }
 });
 
 /* ===============================
- * 🔹 Dentist Schedule Management - จัดการตารางเวลาทันตแพทย์
+ * 🔹 Dentist Schedule Management
  * =============================== */
-
-// หน้าจัดการตารางเวลาทันตแพทย์
 router.get('/schedules', allowRoles('staff'), (req, res) => {
   res.render('staff/schedules', {
     user: req.user,
@@ -1006,228 +679,156 @@ router.get('/schedules', allowRoles('staff'), (req, res) => {
   });
 });
 
-// ดึงข้อมูลตารางเวลาทันตแพทย์
-router.get('/api/schedules', allowRoles('staff'), (req, res) => {
-  const { date, dentistId } = req.query;
+router.get('/api/schedules', allowRoles('staff'), async (req, res) => {
+  try {
+    const { date, dentistId } = req.query;
 
-  let sql = `
-    SELECT 
-      ds.id,
-      ds.dentist_id,
-      ds.unit_id,
-      ds.schedule_date,
-      ds.time_slot,
-      ds.status,
-      ds.created_at,
-      ds.updated_at,
-      d.pre_name || ' ' || d.first_name || ' ' || d.last_name AS dentist_name,
-      du.unit_name
-    FROM dentist_schedules ds
-    JOIN dentists d ON ds.dentist_id = d.id
-    JOIN dental_units du ON ds.unit_id = du.id
-    WHERE 1=1
-  `;
+    const clauses = [];
+    const params  = [];
+    if (date) { clauses.push('ds.schedule_date = ?'); params.push(date); }
+    if (dentistId) { clauses.push('ds.dentist_id = ?'); params.push(dentistId); }
 
-  const params = [];
+    const where = clauses.length ? 'WHERE ' + clauses.join(' AND ') : '';
 
-  if (date) {
-    sql += ' AND ds.schedule_date = ?';
-    params.push(date);
-  }
-
-  if (dentistId) {
-    sql += ' AND ds.dentist_id = ?';
-    params.push(dentistId);
-  }
-
-  sql += ' ORDER BY ds.schedule_date, ds.time_slot, d.first_name';
-
-  db.all(sql, params, (err, rows) => {
-    if (err) {
-      console.error('Error fetching schedules:', err);
-      return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลตารางเวลา' });
-    }
-
+    const [rows] = await db.query(
+      `
+      SELECT 
+        ds.id, ds.dentist_id, ds.unit_id, ds.schedule_date, ds.time_slot, ds.status,
+        ds.created_at, ds.updated_at,
+        CONCAT_WS(' ', d.pre_name, d.first_name, d.last_name) AS dentist_name,
+        du.unit_name
+      FROM dentist_schedules ds
+      JOIN dentists d ON ds.dentist_id = d.id
+      JOIN ${UNIT_TABLE} du ON ds.unit_id = du.id
+      ${where}
+      ORDER BY ds.schedule_date, ds.time_slot, d.first_name
+      `,
+      params
+    );
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('api/schedules error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลตารางเวลา' });
+  }
 });
 
-// เพิ่มตารางเวลาทันตแพทย์
-router.post('/api/schedules', allowRoles('staff'), (req, res) => {
-  const { dentist_id, unit_id, schedule_date, time_slot, status } = req.body;
-
-  if (!dentist_id || !unit_id || !schedule_date || !time_slot) {
-    return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
-  }
-
-  // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
-  const checkSql = `
-    SELECT id FROM dentist_schedules 
-    WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
-  `;
-
-  db.get(checkSql, [dentist_id, unit_id, schedule_date, time_slot], (err, existing) => {
-    if (err) {
-      console.error('Check schedule error:', err);
-      return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูล' });
+router.post('/api/schedules', allowRoles('staff'), async (req, res) => {
+  try {
+    const { dentist_id, unit_id, schedule_date, time_slot, status } = req.body;
+    if (!dentist_id || !unit_id || !schedule_date || !time_slot) {
+      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
 
-    if (existing) {
-      return res.status(400).json({ error: 'มีตารางเวลานี้อยู่แล้ว' });
-    }
+    const [[exists]] = await db.query(
+      `
+      SELECT id FROM dentist_schedules
+      WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
+      `,
+      [dentist_id, unit_id, schedule_date, time_slot]
+    );
+    if (exists) return res.status(400).json({ error: 'มีตารางเวลานี้อยู่แล้ว' });
 
-    // เพิ่มข้อมูลใหม่
-    const insertSql = `
+    const [ins] = await db.query(
+      `
       INSERT INTO dentist_schedules (dentist_id, unit_id, schedule_date, time_slot, status)
       VALUES (?, ?, ?, ?, ?)
-    `;
+      `,
+      [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE']
+    );
 
-    db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function (err) {
-      if (err) {
-        console.error('Insert schedule error:', err);
-        return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเพิ่มตารางเวลา' });
-      }
-
-      res.json({
-        success: true,
-        message: 'เพิ่มตารางเวลาสำเร็จ',
-        id: this.lastID
-      });
-    });
-  });
+    res.json({ success: true, message: 'เพิ่มตารางเวลาสำเร็จ', id: ins.insertId });
+  } catch (err) {
+    console.error('post/api/schedules error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเพิ่มตารางเวลา' });
+  }
 });
 
-// ลบตารางเวลา
-router.delete('/api/schedules/:id', allowRoles('staff'), (req, res) => {
-  const scheduleId = req.params.id;
-
-  // ตรวจสอบว่าตารางเวลาถูกจองแล้วหรือไม่
-  const checkSql = 'SELECT status FROM dentist_schedules WHERE id = ?';
-
-  db.get(checkSql, [scheduleId], (err, schedule) => {
-    if (err) {
-      console.error('Check schedule error:', err);
-      return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูล' });
-    }
-
-    if (!schedule) {
-      return res.status(404).json({ error: 'ไม่พบตารางเวลาที่ต้องการลบ' });
-    }
-
+router.delete('/api/schedules/:id', allowRoles('staff'), async (req, res) => {
+  try {
+    const scheduleId = req.params.id;
+    const [[schedule]] = await db.query(
+      `SELECT status FROM dentist_schedules WHERE id = ?`, [scheduleId]
+    );
+    if (!schedule) return res.status(404).json({ error: 'ไม่พบตารางเวลาที่ต้องการลบ' });
     if (schedule.status === 'BOOKED') {
       return res.status(400).json({ error: 'ไม่สามารถลบตารางเวลาที่ถูกจองแล้วได้' });
     }
 
-    // ลบตารางเวลา
-    const deleteSql = 'DELETE FROM dentist_schedules WHERE id = ?';
-
-    db.run(deleteSql, [scheduleId], function (err) {
-      if (err) {
-        console.error('Delete schedule error:', err);
-        return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการลบตารางเวลา' });
-      }
-
-      res.json({
-        success: true,
-        message: 'ลบตารางเวลาสำเร็จ'
-      });
-    });
-  });
+    await db.query(`DELETE FROM dentist_schedules WHERE id = ?`, [scheduleId]);
+    res.json({ success: true, message: 'ลบตารางเวลาสำเร็จ' });
+  } catch (err) {
+    console.error('delete/api/schedules error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการลบตารางเวลา' });
+  }
 });
 
-// อัปเดตสถานะตารางเวลา
-router.put('/api/schedules/:id', allowRoles('staff'), (req, res) => {
-  const scheduleId = req.params.id;
-  const { status } = req.body;
-
-  if (!status || !['AVAILABLE', 'UNAVAILABLE', 'BREAK'].includes(status)) {
-    return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
+router.put('/api/schedules/:id', allowRoles('staff'), async (req, res) => {
+  try {
+    const scheduleId = req.params.id;
+    const { status } = req.body;
+    if (!status || !['AVAILABLE', 'UNAVAILABLE', 'BREAK', 'BOOKED'].includes(status)) {
+      return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
+    }
+    await db.query(
+      `UPDATE dentist_schedules SET status = ?, updated_at = NOW() WHERE id = ?`,
+      [status, scheduleId]
+    );
+    res.json({ success: true, message: 'อัปเดตตารางเวลาสำเร็จ' });
+  } catch (err) {
+    console.error('put/api/schedules error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตตารางเวลา' });
   }
+});
 
-  const updateSql = `
-    UPDATE dentist_schedules 
-    SET status = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `;
+// เพิ่มหลายช่วงเวลา
+router.post('/api/schedules/bulk', allowRoles('staff'), async (req, res) => {
+  try {
+    const { dentist_id, unit_id, schedule_date, time_slots, status } = req.body;
+    if (!dentist_id || !unit_id || !schedule_date || !time_slots || !Array.isArray(time_slots)) {
+      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    }
 
-  db.run(updateSql, [status, scheduleId], function (err) {
-    if (err) {
-      console.error('Update schedule error:', err);
-      return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตตารางเวลา' });
+    let success = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const time_slot of time_slots) {
+      try {
+        const [[exists]] = await db.query(
+          `
+          SELECT id FROM dentist_schedules
+          WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
+          `,
+          [dentist_id, unit_id, schedule_date, time_slot]
+        );
+        if (exists) {
+          failed++;
+          errors.push(`ช่วงเวลา ${time_slot}: มีข้อมูลอยู่แล้ว`);
+          continue;
+        }
+        await db.query(
+          `
+          INSERT INTO dentist_schedules (dentist_id, unit_id, schedule_date, time_slot, status)
+          VALUES (?, ?, ?, ?, ?)
+          `,
+          [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE']
+        );
+        success++;
+      } catch (_) {
+        failed++;
+        errors.push(`ช่วงเวลา ${time_slot}: ไม่สามารถเพิ่มได้`);
+      }
     }
 
     res.json({
       success: true,
-      message: 'อัปเดตตารางเวลาสำเร็จ'
+      message: `เพิ่มตารางเวลาเสร็จสิ้น (สำเร็จ: ${success}, ล้มเหลว: ${failed})`,
+      results: { success, failed, errors }
     });
-  });
-});
-
-// เพิ่มตารางเวลาหลายช่วงพร้อมกัน (批量เพิ่ม)
-router.post('/api/schedules/bulk', allowRoles('staff'), (req, res) => {
-  const { dentist_id, unit_id, schedule_date, time_slots, status } = req.body;
-
-  if (!dentist_id || !unit_id || !schedule_date || !time_slots || !Array.isArray(time_slots)) {
-    return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+  } catch (err) {
+    console.error('bulk/api/schedules error:', err);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเพิ่มตารางเวลา (bulk)' });
   }
-
-  const results = {
-    success: 0,
-    failed: 0,
-    errors: []
-  };
-
-  // ฟังก์ชันเพิ่มตารางเวลาแบบ recursive
-  function addSchedule(index) {
-    if (index >= time_slots.length) {
-      return res.json({
-        success: true,
-        message: `เพิ่มตารางเวลาเสร็จสิ้น (สำเร็จ: ${results.success}, ล้มเหลว: ${results.failed})`,
-        results: results
-      });
-    }
-
-    const time_slot = time_slots[index];
-
-    // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
-    const checkSql = `
-      SELECT id FROM dentist_schedules 
-      WHERE dentist_id = ? AND unit_id = ? AND schedule_date = ? AND time_slot = ?
-    `;
-
-    db.get(checkSql, [dentist_id, unit_id, schedule_date, time_slot], (err, existing) => {
-      if (err) {
-        results.failed++;
-        results.errors.push(`ช่วงเวลา ${time_slot}: เกิดข้อผิดพลาด`);
-        return addSchedule(index + 1);
-      }
-
-      if (existing) {
-        results.failed++;
-        results.errors.push(`ช่วงเวลา ${time_slot}: มีข้อมูลอยู่แล้ว`);
-        return addSchedule(index + 1);
-      }
-
-      // เพิ่มข้อมูลใหม่
-      const insertSql = `
-        INSERT INTO dentist_schedules (dentist_id, unit_id, schedule_date, time_slot, status)
-        VALUES (?, ?, ?, ?, ?)
-      `;
-
-      db.run(insertSql, [dentist_id, unit_id, schedule_date, time_slot, status || 'AVAILABLE'], function (err) {
-        if (err) {
-          results.failed++;
-          results.errors.push(`ช่วงเวลา ${time_slot}: ไม่สามารถเพิ่มได้`);
-        } else {
-          results.success++;
-        }
-
-        addSchedule(index + 1);
-      });
-    });
-  }
-
-  addSchedule(0);
 });
 
 module.exports = router;
