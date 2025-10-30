@@ -211,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const active = it.id === activeRowId ? 'active-row' : '';
         const qtyRO = it.isPerTooth ? 'readonly' : '';
 
-        // === จัดบรรทัดในคอลัมน์ "รายการ" ===
         const descHtml = `<div class="desc"><strong>${it.description}</strong></div>`;
         const teethHtml = (it.tooth_no && it.isPerTooth)
           ? `<div class="tooth-line text-muted small">ซี่: ${it.tooth_no}</div>` : '';

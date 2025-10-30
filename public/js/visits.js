@@ -67,14 +67,12 @@
     apply();
   }
 
-  // Other detail text toggle
   function toggleOther(){
     if (!otherInput) return;
     otherInput.classList.toggle('show', procOther?.checked);
     otherInput.hidden = !procOther?.checked;
   }
 
-  // Before submit: normalize into backend-friendly arrays
   function buildHidden(name, value){
     const i = document.createElement('input');
     i.type='hidden'; i.name=name; i.value=value;
@@ -88,29 +86,24 @@
   }
 
   form?.addEventListener('submit', (e)=>{
-    // SCALING
     if (procScaling?.checked){
       const price = enableScaling.checked ? Number(priceScaling.value || 0) : 0;
       addProc('SCALING', '', 1, price);
     }
-    // FILLING (one per tooth)
     if (procFilling?.checked){
       const per = enableFilling.checked ? Number(priceFillPer.value || 0) : 0;
       const teeth = selectedTeeth();
       if (teeth.length === 0){
-        // if no teeth selected but filling on, add one generic
         addProc('FILLING', '', Number(priceFillCount.value || 1), per);
       } else {
         teeth.forEach(t => addProc('FILLING', t, 1, per));
       }
     }
-    // OTHER detail (if provided) – add a generic 'OTHER' with price=0
     if (procOther?.checked && otherInput?.value){
       addProc('OTHER', '', 1, 0);
     }
   });
 
-  // init
   renderTeeth();
   modeRadios.forEach(r=> r.addEventListener('change', renderTeeth));
   teethBox.addEventListener('change', syncFillCount);
@@ -121,7 +114,7 @@
   toggleOther();
   updateSummary();
 
-  // Uploader (visual only – presign integration can be wired later)
+  // simple preview-uploader (UI เท่านั้น)
   const uploader = document.getElementById('uploader');
   const pickBtn = document.getElementById('pickBtn');
   const xrayInput = document.getElementById('xrayInput');
