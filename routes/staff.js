@@ -244,6 +244,179 @@ router.get('/queue', allowRoles('staff'), (req, res) => {
   });
 });
 
+// GET /staff/queue-master-data
+router.get('/queue-master-data', allowRoles('staff'), (req, res) => {
+  // ดึงข้อมูลทันตแพทย์
+  const dentistsQuery = `
+    SELECT d.id, d.license_number, d.pre_name, d.first_name, d.last_name, 
+           u.email, u.citizen_id
+    FROM dentists d
+    JOIN users u ON d.user_id = u.id
+    WHERE d.status = 'ACTIVE'
+  `;
+
+  // ดึงข้อมูลหน่วยทันตกรรม
+  const unitsQuery = `
+    SELECT id, unit_name as name, status 
+    FROM dental_units 
+    WHERE status = 'ACTIVE'
+  `;
+
+  db.all(dentistsQuery, [], (err, dentists) => {
+    if (err) {
+      console.error('Dentists query error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    db.all(unitsQuery, [], (err2, units) => {
+      if (err2) {
+        console.error('Units query error:', err2);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      const formattedDentists = dentists.map(d => ({
+        id: d.id,
+        name: `${d.pre_name || ''}${d.first_name} ${d.last_name}`.trim(),
+        license_number: d.license_number,
+        email: d.email
+      }));
+
+      res.json({
+        dentists: formattedDentists,
+        units: units
+      });
+    });
+  });
+});
+
+/* ===============================
+ * 🔹 Queue Data (แก้เป็น callback)
+ * =============================== */
+router.get('/queue-data', allowRoles('staff'), (req, res) => {
+  const { date } = req.query;
+  if (!date) {
+    return res.status(400).json({ error: 'Date is required' });
+  }
+
+  // ดึงข้อมูลคิวจาก appointment_requests
+  const queueItemsQuery = `
+    SELECT ar.id, ar.patient_id, ar.requested_date as date, 
+           ar.requested_time_slot as time, ar.treatment as service_description,
+           ar.status, ar.notes,
+           p.first_name, p.last_name, p.pre_name
+    FROM appointment_requests ar
+    LEFT JOIN patients p ON ar.patient_id = p.id
+    WHERE ar.requested_date = ? 
+    ORDER BY ar.requested_time_slot
+  `;
+
+  // ดึงข้อมูลนัดหมายที่จัดแล้ว
+  const appointmentsQuery = `
+    SELECT a.id, a.patient_id, a.dentist_id, a.unit_id, 
+           a.date, a.slot_text as slot, a.status,
+           p.first_name, p.last_name, p.pre_name,
+           d.pre_name as doc_pre_name, d.first_name as doc_first_name, d.last_name as doc_last_name,
+           du.unit_name
+    FROM appointments a
+    LEFT JOIN patients p ON a.patient_id = p.id
+    LEFT JOIN dentists d ON a.dentist_id = d.id
+    LEFT JOIN dental_units du ON a.unit_id = du.id
+    WHERE a.date = ?
+    ORDER BY a.slot_text
+  `;
+
+  db.all(queueItemsQuery, [date], (err, queueItems) => {
+    if (err) {
+      console.error('Queue items query error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    db.all(appointmentsQuery, [date], (err2, appointments) => {
+      if (err2) {
+        console.error('Appointments query error:', err2);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      const formattedQueueItems = queueItems.map(item => ({
+        ...item,
+        service: item.service_description,
+        status: item.status ? item.status.toLowerCase() : 'new'
+      }));
+
+      res.json({
+        queueItems: formattedQueueItems,
+        appointments: appointments
+      });
+    });
+  });
+});
+
+/* ===============================
+ * 🔹 Assign Queue (แก้เป็น callback)
+ * =============================== */
+router.post('/assign-queue', allowRoles('staff'), (req, res) => {
+  const { requestId, patientId, dentistId, unitId, date, slot, serviceDescription } = req.body;
+
+  if (!requestId || !patientId || !dentistId || !unitId || !date || !slot) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // เริ่ม transaction
+  db.run('BEGIN TRANSACTION', (err) => {
+    if (err) {
+      console.error('Begin transaction error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    // สร้างนัดหมายใหม่
+    const insertAppointmentQuery = `
+      INSERT INTO appointments (patient_id, dentist_id, unit_id, date, slot_text, status, from_request_id)
+      VALUES (?, ?, ?, ?, ?, 'scheduled', ?)
+    `;
+
+    db.run(insertAppointmentQuery, [patientId, dentistId, unitId, date, slot, requestId], function(err2) {
+      if (err2) {
+        console.error('Insert appointment error:', err2);
+        return db.run('ROLLBACK', () => {
+          res.status(500).json({ error: 'Internal server error' });
+        });
+      }
+
+      const appointmentId = this.lastID;
+
+      // อัพเดทสถานะคำขอนัดหมาย
+      const updateRequestQuery = `
+        UPDATE appointment_requests 
+        SET status = 'SCHEDULED' 
+        WHERE id = ?
+      `;
+
+      db.run(updateRequestQuery, [requestId], (err3) => {
+        if (err3) {
+          console.error('Update request error:', err3);
+          return db.run('ROLLBACK', () => {
+            res.status(500).json({ error: 'Internal server error' });
+          });
+        }
+
+        // Commit transaction
+        db.run('COMMIT', (err4) => {
+          if (err4) {
+            console.error('Commit error:', err4);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
+
+          res.json({ 
+            success: true, 
+            appointmentId: appointmentId,
+            message: 'จัดคิวสำเร็จ'
+          });
+        });
+      });
+    });
+  });
+});
+
 /* ===============================
  * 🔹 Unit API (สำหรับ unit.js)
  *      → ตอนนี้จะอ่านจาก 'dental_units' เป็นหลัก

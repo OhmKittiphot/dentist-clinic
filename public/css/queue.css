@@ -1,5 +1,6 @@
 :root {
   --bg: #f2f4f7; --panel: #fff; --line: #e5e7eb; --brand: #4f74a1; --success: #22c55e;
+  --danger: #dc2626; --warning: #d97706;
 }
 
 body, input, select, button { font-family: sans-serif; }
@@ -9,6 +10,13 @@ body, input, select, button { font-family: sans-serif; }
 header { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); }
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+
+.queue-grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+}
 
 .table { width: 100%; border-collapse: collapse; }
 
@@ -20,7 +28,139 @@ th, td { padding: 8px; border-bottom: 1px solid var(--line); }
 
 button { cursor: pointer; }
 
-#slotSuggest { display: flex; gap: 5px; flex-wrap: wrap; }
+.form-group {
+  margin-bottom: 15px;
+}
 
-.drop { border: 1px solid #dbe6f4; border-radius: 6px; padding: 4px; margin: 2px; min-width: 80px; text-align: center; }
-.drop.booked { opacity: 0.6; text-decoration: line-through; cursor: not-allowed; }
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.time-slots {
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  border: 1px solid var(--line);
+}
+
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.time-row:last-child {
+  margin-bottom: 0;
+  justify-content: flex-start;
+}
+
+.time-row span {
+  flex: 1;
+  text-align: center;
+  padding: 5px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin: 0 5px;
+}
+
+.btn-confirm {
+  width: 100%;
+  padding: 12px;
+  background: var(--success);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.btn-confirm:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.slot-info {
+  padding: 10px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.slot-available {
+  padding: 10px;
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+  border-radius: 6px;
+  text-align: center;
+  color: #166534;
+  font-weight: bold;
+}
+
+.slot-unavailable {
+  padding: 10px;
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  text-align: center;
+  color: #991b1b;
+  font-weight: bold;
+}
+
+#selLabel {
+  background: #eff6ff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border-left: 4px solid var(--brand);
+  font-weight: bold;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar .seg {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.toolbar .seg button {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.toolbar .seg button.active {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.chip {
+  padding: 6px 12px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: #dbeafe;
+}

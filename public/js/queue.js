@@ -15,18 +15,12 @@ const btnAssign = document.getElementById('btnAssign');
 const btnToday = document.getElementById('btnToday');
 const btnTomorrow = document.getElementById('btnTomorrow');
 
-//view switching
+// view switching - ลบ Board Unit และ Board Dentist
 const viewAssign = document.getElementById('viewAssign');
-const viewUnit = document.getElementById('viewUnit');
-const viewDent = document.getElementById('viewDent');
 const viewAgenda = document.getElementById('viewAgenda');
 const panelAssign = document.getElementById('panelAssign');
-const panelUnit = document.getElementById('panelUnit');
-const panelDent = document.getElementById('panelDent');
 const panelAgenda = document.getElementById('panelAgenda');
 const agendaBody = document.getElementById('agendaBody');
-const boardUnit = document.getElementById('boardUnit');
-const boardDent = document.getElementById('boardDent');
 
 async function loadDataForDate(){
   const date = dateEl.value; if(!date) return;
@@ -40,8 +34,7 @@ async function loadDataForDate(){
   calculateAvailability(date, appointments);
   renderQueue(); 
   renderAgenda();
-  renderBoardByUnit();
-  renderBoardByDent();
+  updateSlotSuggestions();
 }
 
 function calculateAvailability(date, booked){
@@ -84,7 +77,6 @@ function renderQueue(){
   });
 }
 
-// เพิ่มฟังก์ชันที่หายไป
 function renderAgenda() {
   if (!agendaBody) return;
   
@@ -108,68 +100,34 @@ function renderAgenda() {
   });
 }
 
-function renderBoardByUnit() {
-  if (!boardUnit) return;
-  
-  boardUnit.innerHTML = '';
-  
-  if (units.length === 0) {
-    boardUnit.innerHTML = '<div style="text-align:center;padding:20px;">ไม่มีข้อมูลหน่วยทันตกรรม</div>';
+function updateSlotSuggestions() {
+  if (!selectedQueueId) {
+    slotSuggest.innerHTML = '<div class="slot-info">กรุณาเลือกรายการจาก CustomerTime</div>';
     return;
   }
-  
-  units.forEach(unit=>{
-    const unitCard = document.createElement('div');
-    unitCard.className = 'card';
-    unitCard.innerHTML = `<h4>${unit.name}</h4>`;
-    
-    const unitAppointments = appointments.filter(a=>a.unit_id == unit.id);
-    
-    if (unitAppointments.length === 0) {
-      unitCard.innerHTML += '<div>ไม่มีนัดหมาย</div>';
-    } else {
-      unitAppointments.forEach(app=>{
-        const appDiv = document.createElement('div');
-        appDiv.className = 'drop';
-        appDiv.innerHTML = `${app.slot} - ${patName(app)}`;
-        unitCard.appendChild(appDiv);
-      });
-    }
-    
-    boardUnit.appendChild(unitCard);
-  });
-}
 
-function renderBoardByDent() {
-  if (!boardDent) return;
-  
-  boardDent.innerHTML = '';
-  
-  if (dentists.length === 0) {
-    boardDent.innerHTML = '<div style="text-align:center;padding:20px;">ไม่มีข้อมูลทันตแพทย์</div>';
+  const item = queueItems.find(q => q.id === selectedQueueId);
+  if (!item) return;
+
+  const selectedDentist = denSel.value;
+  const selectedUnit = unitSel.value;
+  const selectedDate = item.date;
+  const selectedTime = item.time;
+
+  if (!selectedDentist || !selectedUnit) {
+    slotSuggest.innerHTML = '<div class="slot-info">กรุณาเลือกทันตแพทย์และหน่วยทันตกรรม</div>';
     return;
   }
+
+  const isAvailable = slotAvailable(selectedDate, selectedTime, selectedDentist, selectedUnit);
   
-  dentists.forEach(dentist=>{
-    const dentCard = document.createElement('div');
-    dentCard.className = 'card';
-    dentCard.innerHTML = `<h4>${dentist.name}</h4>`;
-    
-    const dentAppointments = appointments.filter(a=>a.dentist_id == dentist.id);
-    
-    if (dentAppointments.length === 0) {
-      dentCard.innerHTML += '<div>ไม่มีนัดหมาย</div>';
-    } else {
-      dentAppointments.forEach(app=>{
-        const appDiv = document.createElement('div');
-        appDiv.className = 'drop';
-        appDiv.innerHTML = `${app.slot} - ${patName(app)}`;
-        dentCard.appendChild(appDiv);
-      });
-    }
-    
-    boardDent.appendChild(dentCard);
-  });
+  if (isAvailable) {
+    slotSuggest.innerHTML = `<div class="slot-available">✓ เวลา ${selectedTime} ว่าง สามารถจองได้</div>`;
+    btnAssign.disabled = false;
+  } else {
+    slotSuggest.innerHTML = `<div class="slot-unavailable">✗ เวลา ${selectedTime} ไม่ว่าง กรุณาเลือกเวลาอื่น</div>`;
+    btnAssign.disabled = true;
+  }
 }
 
 function fillSel(sel, arr){ 
@@ -177,7 +135,7 @@ function fillSel(sel, arr){
   arr.forEach(x=>{ 
     const o=document.createElement('option'); 
     o.value=x.id; 
-    o.textContent=`${x.name} (${x.id})`; 
+    o.textContent=`${x.pre_name || ''}${x.first_name || x.name} ${x.last_name || ''} (${x.license_number || x.id})`; 
     sel.appendChild(o); 
   }); 
 }
@@ -187,18 +145,17 @@ function startAssign(id){
   if(!item) return; 
   selectedQueueId=id; 
   selLabel.textContent=`${item.date} · ${item.time} · ${patName(item)} · ${svcName(item)}`; 
-  btnAssign.disabled=false; 
+  updateSlotSuggestions();
 }
 
-// เพิ่มฟังก์ชันสำหรับเปลี่ยน view
 function switchView(viewName) {
   // ซ่อนทั้งหมด
-  [panelAssign, panelUnit, panelDent, panelAgenda].forEach(panel => {
+  [panelAssign, panelAgenda].forEach(panel => {
     if (panel) panel.style.display = 'none';
   });
   
   // ลบ active class ทั้งหมด
-  [viewAssign, viewUnit, viewDent, viewAgenda].forEach(btn => {
+  [viewAssign, viewAgenda].forEach(btn => {
     if (btn) btn.classList.remove('active');
   });
   
@@ -207,14 +164,6 @@ function switchView(viewName) {
     case 'assign':
       if (panelAssign) panelAssign.style.display = 'block';
       if (viewAssign) viewAssign.classList.add('active');
-      break;
-    case 'unit':
-      if (panelUnit) panelUnit.style.display = 'block';
-      if (viewUnit) viewUnit.classList.add('active');
-      break;
-    case 'dent':
-      if (panelDent) panelDent.style.display = 'block';
-      if (viewDent) viewDent.classList.add('active');
       break;
     case 'agenda':
       if (panelAgenda) panelAgenda.style.display = 'block';
@@ -248,6 +197,7 @@ btnAssign.addEventListener('click', async ()=>{
     selectedQueueId = null;
     selLabel.textContent = '—';
     btnAssign.disabled = true;
+    slotSuggest.innerHTML = '<div class="slot-info">กรุณาเลือกรายการจาก CustomerTime</div>';
   }
 });
 
@@ -262,11 +212,13 @@ async function initPage(){
   fillSel(denSel,dentists); 
   fillSel(unitSel,units);
   
-  // เพิ่ม event listeners สำหรับเปลี่ยน view
+  // event listeners สำหรับเปลี่ยน view
   if (viewAssign) viewAssign.addEventListener('click', () => switchView('assign'));
-  if (viewUnit) viewUnit.addEventListener('click', () => switchView('unit'));
-  if (viewDent) viewDent.addEventListener('click', () => switchView('dent'));
   if (viewAgenda) viewAgenda.addEventListener('click', () => switchView('agenda'));
+  
+  // event listeners สำหรับการเลือกทันตแพทย์และหน่วย
+  denSel.addEventListener('change', updateSlotSuggestions);
+  unitSel.addEventListener('change', updateSlotSuggestions);
   
   await loadDataForDate();
 }

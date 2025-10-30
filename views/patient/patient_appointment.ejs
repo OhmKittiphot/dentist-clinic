@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <%- include('../partials/head') %>
+        <title>ขอรับบริการทันตกรรม</title>
+        <link rel="stylesheet" href="/public/css/patient_appointment.css" />
+</head>
+
+<body>
+    <div class="app">
+        <%- include('../partials/navbar', { user: user, userRole: userRole, page: 'patient_appointment' }) %>
+
+            <main class="main">
+                <div class="appointment-container">
+                    <header class="page-header">
+                        <h1>ขอรับบริการทันตกรรม</h1>
+                        <p>กรุณาตรวจสอบข้อมูลและเลือกเวลาที่ต้องการนัดหมาย</p>
+                    </header>
+
+                    <form id="appointmentForm" class="appointment-form">
+                        <!-- ข้อมูลผู้ป่วย -->
+                        <section class="form-section">
+                            <h2>ข้อมูลผู้ป่วย</h2>
+
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="preName">คำนำหน้า</label>
+                                    <select id="preName" name="preName" required>
+                                        <option value="">-- เลือกคำนำหน้า --</option>
+                                        <option value="นาย" <%=patient && patient.pre_name==='นาย' ? 'selected' : '' %>
+                                            >นาย</option>
+                                        <option value="นาง" <%=patient && patient.pre_name==='นาง' ? 'selected' : '' %>
+                                            >นาง</option>
+                                        <option value="นางสาว" <%=patient && patient.pre_name==='นางสาว' ? 'selected'
+                                            : '' %>>นางสาว</option>
+                                        <option value="เด็กชาย" <%=patient && patient.pre_name==='เด็กชาย' ? 'selected'
+                                            : '' %>>เด็กชาย</option>
+                                        <option value="เด็กหญิง" <%=patient && patient.pre_name==='เด็กหญิง'
+                                            ? 'selected' : '' %>>เด็กหญิง</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="firstName">ชื่อ</label>
+                                    <input type="text" id="firstName" name="firstName"
+                                        value="<%= patient ? patient.first_name : '' %>" required <%=patient
+                                        ? 'readonly' : '' %>
+                                    >
+                                    <% if (patient) { %>
+                                        <small class="readonly-note">(ข้อมูลจากระบบ)</small>
+                                        <% } %>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="lastName">นามสกุล</label>
+                                    <input type="text" id="lastName" name="lastName"
+                                        value="<%= patient ? patient.last_name : '' %>" required <%=patient ? 'readonly'
+                                        : '' %>
+                                    >
+                                    <% if (patient) { %>
+                                        <small class="readonly-note">(ข้อมูลจากระบบ)</small>
+                                        <% } %>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone">เบอร์โทรศัพท์</label>
+                                    <input type="tel" id="phone" name="phone"
+                                        value="<%= patient ? patient.phone : '' %>" required>
+                                    <% if (patient && patient.phone) { %>
+                                        <small class="readonly-note">(ข้อมูลจากระบบ)</small>
+                                        <% } %>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="email">อีเมล</label>
+                                    <input type="email" id="email" name="email"
+                                        value="<%= patient ? patient.email : '' %>">
+                                    <% if (patient && patient.email) { %>
+                                        <small class="readonly-note">(ข้อมูลจากระบบ)</small>
+                                        <% } %>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- ข้อมูลการนัดหมาย -->
+                        <section class="form-section">
+                            <h2>ข้อมูลการนัดหมาย</h2>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="requestedDate">วันที่ต้องการ</label>
+                                    <input type="date" id="requestedDate" name="requestedDate" required
+                                        min="<%= new Date().toISOString().split('T')[0] %>">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="requestedTime">ช่วงเวลา</label>
+                                    <select id="requestedTime" name="requestedTime" required>
+                                        <option value="">-- เลือกช่วงเวลา --</option>
+                                        <option value="10:00-11:00">10:00-11:00</option>
+                                        <option value="11:00-12:00">11:00-12:00</option>
+                                        <option value="12:00-13:00">12:00-13:00</option>
+                                        <option value="13:00-14:00">13:00-14:00</option>
+                                        <option value="14:00-15:00">14:00-15:00</option>
+                                        <option value="15:00-16:00">15:00-16:00</option>
+                                        <option value="16:00-17:00">16:00-17:00</option>
+                                        <option value="17:00-18:00">17:00-18:00</option>
+                                        <option value="18:00-19:00">18:00-19:00</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label for="treatment">บริการที่ต้องการ</label>
+                                    <select id="treatment" name="treatment" required>
+                                        <option value="">-- เลือกบริการ --</option>
+                                        <% if (servicesByCategory) { %>
+                                            <% Object.keys(servicesByCategory).forEach(category=> { %>
+                                                <optgroup label="<%= category %>">
+                                                    <% servicesByCategory[category].forEach(service=> { %>
+                                                        <option value="<%= service.description %>"
+                                                            data-code="<%= service.code %>"
+                                                            data-price="<%= service.default_price %>">
+                                                            <%= service.description %> - <%= service.default_price %>
+                                                                    บาท
+                                                        </option>
+                                                        <% }) %>
+                                                </optgroup>
+                                                <% }) %>
+                                                    <% } else { %>
+                                                        <!-- Fallback options ถ้าไม่มี services -->
+                                                        <option value="ตรวจสุขภาพฟัน">ตรวจสุขภาพฟัน</option>
+                                                        <option value="ขูดหินปูน">ขูดหินปูน</option>
+                                                        <option value="อุดฟัน">อุดฟัน</option>
+                                                        <option value="รักษารากฟัน">รักษารากฟัน</option>
+                                                        <option value="ถอนฟัน">ถอนฟัน</option>
+                                                        <% } %>
+                                                            <option value="อื่นๆ">อื่นๆ (ระบุในหมายเหตุ)</option>
+                                    </select>
+                                    <small class="price-note" id="priceNote" style="display: none;"></small>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label for="notes">หมายเหตุ (ถ้ามี)</label>
+                                    <textarea id="notes" name="notes" rows="3"
+                                        placeholder="ระบุอาการหรือข้อความเพิ่มเติม..."></textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- ปุ่มส่งคำขอ -->
+                        <div class="form-actions">
+                            <button type="button" id="btnCancel" class="btn btn-secondary">ยกเลิก</button>
+                            <button type="submit" id="btnSubmit" class="btn btn-primary">ส่งคำขอนัดหมาย</button>
+                        </div>
+                    </form>
+
+                    <!-- Modal ยืนยันการส่ง -->
+                    <div id="confirmModal" class="modal" style="display: none;">
+                        <div class="modal-content">
+                            <h3>ยืนยันการส่งคำขอนัดหมาย</h3>
+                            <p>กรุณาตรวจสอบข้อมูลก่อนส่งคำขอ</p>
+                            <div id="confirmDetails" class="confirm-details"></div>
+                            <div class="modal-actions">
+                                <button type="button" id="btnModalCancel" class="btn btn-secondary">แก้ไข</button>
+                                <button type="button" id="btnModalConfirm"
+                                    class="btn btn-primary">ยืนยันส่งคำขอ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+    </div>
+
+    <script src="/public/js/patient_appointment.js"></script>
+</body>
+
+</html>

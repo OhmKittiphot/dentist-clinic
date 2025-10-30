@@ -175,4 +175,191 @@ router.post('/payments/:id/pay', allowRoles('patient'), (req, res, next) => {
   });
 });
 
+
+router.get('/patient_appointment', allowRoles('patient'), (req, res) => {
+  const userId = req.user.id;
+  
+  // ดึงข้อมูลผู้ป่วยจากตาราง patients โดยใช้ user_id
+  const patientSql = `
+    SELECT pre_name, first_name, last_name, phone, email 
+    FROM patients 
+    WHERE user_id = ?
+  `;
+
+  // ดึงบริการจากตาราง procedure_codes
+  const servicesSql = `
+    SELECT code, description, default_price, category 
+    FROM procedure_codes 
+    ORDER BY category, description
+  `;
+
+  db.get(patientSql, [userId], (err, patient) => {
+    if (err) {
+      console.error('Error fetching patient data:', err);
+      // ถ้า error ก็ยังให้แสดงหน้าได้ แต่ไม่มีข้อมูล pre-filled
+      return getServices(null);
+    }
+
+    console.log('Patient data found:', patient);
+    getServices(patient);
+  });
+
+  function getServices(patient) {
+    db.all(servicesSql, [], (err, services) => {
+      if (err) {
+        console.error('Error fetching services:', err);
+        services = [];
+      }
+
+      // จัดกลุ่มบริการตาม category
+      const servicesByCategory = {};
+      services.forEach(service => {
+        if (!servicesByCategory[service.category]) {
+          servicesByCategory[service.category] = [];
+        }
+        servicesByCategory[service.category].push(service);
+      });
+
+      res.render('patient/patient_appointment', {
+        user: req.user,
+        userRole: req.user.role,
+        page: 'patient_appointment',
+        patient: patient,
+        servicesByCategory: servicesByCategory,
+        services: services
+      });
+    });
+  }
+});
+
+// POST /patient/appointment-request
+router.post('/appointment-request', allowRoles('patient'), (req, res) => {
+  console.log('POST /patient/appointment-request called with:', req.body);
+  
+  const {
+    requested_date,
+    requested_time_slot,
+    treatment,
+    notes
+  } = req.body;
+
+  // Validation
+  if (!requested_date || !requested_time_slot || !treatment) {
+    console.error('Missing required fields:', { requested_date, requested_time_slot, treatment });
+    return res.status(400).json({
+      success: false,
+      error: 'กรุณากรอกข้อมูลการนัดหมายให้ครบถ้วน'
+    });
+  }
+
+  const userId = req.user.id;
+  if (!userId) {
+    console.error('No user_id found in request');
+    return res.status(400).json({
+      success: false,
+      error: 'ไม่พบข้อมูลผู้ใช้งาน'
+    });
+  }
+
+  console.log('Looking for patient with user_id:', userId);
+
+  // ดึงข้อมูล patient_id ที่ถูกต้องจากตาราง patients โดยใช้ user_id
+  const getPatientSql = `
+    SELECT id
+    FROM patients 
+    WHERE user_id = ?
+  `;
+  
+  db.get(getPatientSql, [userId], (err, patient) => {
+    if (err) {
+      console.error('Database error fetching patient:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ป่วย: ' + err.message
+      });
+    }
+
+    if (!patient) {
+      console.error('Patient not found with user_id:', userId);
+      return res.status(400).json({
+        success: false,
+        error: 'ไม่พบข้อมูลผู้ป่วยในระบบ'
+      });
+    }
+
+    console.log('Found patient ID:', patient.id);
+
+    // Insert into appointment_requests table - ใช้เฉพาะ column ที่มีอยู่จริง
+    const sql = `
+      INSERT INTO appointment_requests (
+        patient_id, requested_date, requested_time_slot, treatment, notes, status
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      patient.id, // patient_id
+      requested_date,
+      requested_time_slot,
+      treatment,
+      notes || null,
+      'NEW'
+    ];
+
+    console.log('Executing SQL with params:', params);
+
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Database error creating appointment request:', err);
+        console.error('SQL Error details:', err.message);
+        
+        return res.status(500).json({
+          success: false,
+          error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message
+        });
+      }
+
+      console.log('Appointment request created successfully, ID:', this.lastID);
+      
+      res.json({
+        success: true,
+        requestId: this.lastID,
+        message: 'ส่งคำขอนัดหมายสำเร็จ'
+      });
+    });
+  });
+});
+
+// GET /patient/appointment-history (optional - for viewing request history)
+router.get('/appointment-history', allowRoles('patient'), (req, res) => {
+  const patientId = req.user.patient_id;
+  
+  const sql = `
+    SELECT 
+      id,
+      requested_date,
+      requested_time_slot,
+      treatment,
+      notes,
+      status,
+      created_at
+    FROM appointment_requests 
+    WHERE patient_id = ?
+    ORDER BY created_at DESC
+  `;
+
+  db.all(sql, [patientId], (err, requests) => {
+    if (err) {
+      console.error('Error fetching appointment history:', err);
+      return res.status(500).send('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    }
+
+    res.render('patient/appointment_history', {
+      user: req.user,
+      userRole: req.user.role,
+      page: 'appointment_history',
+      requests: requests
+    });
+  });
+});
+
 module.exports = router;

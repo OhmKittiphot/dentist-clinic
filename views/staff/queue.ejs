@@ -22,8 +22,6 @@
               <button class="chip" id="btnTomorrow">พรุ่งนี้</button>
               <div class="seg">
                 <button id="viewAssign" class="active">Assign</button>
-                <button id="viewUnit">Board · Unit</button>
-                <button id="viewDent">Board · Dentist</button>
                 <button id="viewAgenda">Agenda</button>
               </div>
             </div>
@@ -56,20 +54,41 @@
             <section class="card" id="panelAssign">
               <h3>Assign แบบฟอร์ม</h3>
               <div id="selLabel">—</div>
-              <select id="denSel"></select>
-              <select id="unitSel"></select>
-              <div id="slotSuggest"></div>
-              <button id="btnAssign" disabled>ยืนยันการจัดคิว</button>
-            </section>
-
-            <section class="card" id="panelUnit" style="display:none">
-              <h3>Board ตามห้อง (Unit)</h3>
-              <div id="boardUnit"></div>
-            </section>
-
-            <section class="card" id="panelDent" style="display:none">
-              <h3>Board ตามทันตแพทย์</h3>
-              <div id="boardDent"></div>
+              
+              <div class="form-group">
+                <label>ทันตแพทย์</label>
+                <select id="denSel"></select>
+              </div>
+              
+              <div class="form-group">
+                <label>หน่วยทันตกรรม</label>
+                <select id="unitSel"></select>
+              </div>
+              
+              <div class="form-group">
+                <label>สถานะห้องและเวลา</label>
+                <div id="slotSuggest"></div>
+              </div>
+              
+              <div class="time-slots">
+                <div class="time-row">
+                  <span>10:00-11:00</span>
+                  <span>11:00-12:00</span>
+                  <span>12:00-13:00</span>
+                  <span>13:00-14:00</span>
+                </div>
+                <div class="time-row">
+                  <span>14:00-15:00</span>
+                  <span>15:00-16:00</span>
+                  <span>16:00-17:00</span>
+                  <span>17:00-18:00</span>
+                </div>
+                <div class="time-row">
+                  <span>18:00-19:00</span>
+                </div>
+              </div>
+              
+              <button id="btnAssign" class="btn-confirm" disabled>ยืนยันการจัดคิว</button>
             </section>
 
             <section class="card" id="panelAgenda" style="display:none">
