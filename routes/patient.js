@@ -29,9 +29,6 @@ router.use(fetchPatientId);
 
 /* =========================================================================
    DASHBOARD: นัดหมายครั้งถัดไป
-   ลำดับความสำคัญ:
-   1) ดึงจาก appointments (status: pending/confirmed)
-   2) ถ้าไม่เจอ ให้ fallback ไปดู appointment_requests ที่วันที่ >= วันนี้ (NEW/PENDING)
    ========================================================================= */
 router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
   try {
@@ -64,7 +61,7 @@ router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
 
     let appointmentOrRequest = appointment;
 
-    // 2) ถ้าไม่มีนัดจริง ให้ดูคำขอที่ยังไม่ถึงกำหนด (แสดงเป็น "รอยืนยัน")
+    // 2) ถ้าไม่มีนัดจริง ให้ดูคำขออนาคต
     if (!appointmentOrRequest) {
       const reqSql = `
         SELECT id, requested_date, requested_time_slot, treatment, notes, status
@@ -80,24 +77,22 @@ router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
       });
 
       if (reqRow) {
-        // แปลงเป็น object ที่หน้าจออ่านได้เหมือน appointments
-        // slot รูปแบบ "HH:MM-HH:MM"
         const start = `${reqRow.requested_date} ${reqRow.requested_time_slot.substring(0,5)}:00`;
         const end   = `${reqRow.requested_date} ${reqRow.requested_time_slot.substring(6,11)}:00`;
         appointmentOrRequest = {
           id: reqRow.id,
           start_time: start,
           end_time: end,
-          status: 'pending',          // แสดงเป็นรอยืนยัน
+          status: 'pending',
           notes: reqRow.notes || `คำขอ: ${reqRow.treatment || ''}`,
-          dentist_name: null,         // ยังไม่ระบุ
-          unit_name: null,            // ยังไม่ระบุ
-          is_request: 1               // ธงไว้ให้ template แสดงข้อความพิเศษ
+          dentist_name: null,
+          unit_name: null,
+          is_request: 1
         };
       }
     }
 
-    // ยอดค้างชำระล่าสุด (ถ้ามี)
+    // ยอดค้างชำระล่าสุด
     const paymentSql = `
       SELECT p.*
       FROM payments p
@@ -123,7 +118,7 @@ router.get('/dashboard', allowRoles('patient'), async (req, res, next) => {
   }
 });
 
-/* =================== หน้ารายการนัดหมายทั้งหมด (placeholder) =================== */
+/* =================== หน้ารายการนัดหมาย (ยังไม่ทำ) =================== */
 router.get('/appointments', allowRoles('patient'), (req, res) => {
   res.send('<h1>หน้านี้ยังไม่เสร็จ</h1><a href="/patient/dashboard">กลับไปแดชบอร์ด</a>');
 });
@@ -353,6 +348,94 @@ router.get('/appointment-history', allowRoles('patient'), (req, res) => {
       userRole: req.user.role,
       page: 'appointment_history',
       requests: requests
+    });
+  });
+});
+
+/* =================== ยกเลิกนัดจริง (appointments) =================== */
+router.post('/appointments/:id/cancel', allowRoles('patient'), (req, res) => {
+  const apptId = req.params.id;
+  const patientId = req.user.patient_id;
+
+  const checkSql = `
+    SELECT id, patient_id, status, start_time
+    FROM appointments
+    WHERE id = ? AND patient_id = ?
+  `;
+
+  db.get(checkSql, [apptId, patientId], (err, appt) => {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+    if (!appt) return res.status(404).json({ success: false, error: 'ไม่พบนัดของคุณ' });
+
+    const allowed = ['PENDING','CONFIRMED'];
+    const nowOk = new Date(appt.start_time) > new Date(); // ยังไม่ถึงเวลา
+    if (!allowed.includes(String(appt.status).toUpperCase())) {
+      return res.status(400).json({ success: false, error: 'ไม่สามารถยกเลิกนัดสถานะนี้ได้' });
+    }
+    if (!nowOk) {
+      return res.status(400).json({ success: false, error: 'เลยเวลาเริ่มนัดแล้ว ไม่สามารถยกเลิกได้' });
+    }
+
+    const upd = `UPDATE appointments SET status = 'cancelled' WHERE id = ?`;
+    db.run(upd, [apptId], (err2) => {
+      if (err2) return res.status(500).json({ success: false, error: err2.message });
+      return res.json({ success: true, message: 'ยกเลิกนัดสำเร็จ' });
+    });
+  });
+});
+
+/* =================== เลื่อนนัด (ยกเลิกเดิม + สร้างคำขอใหม่) =================== */
+router.post('/appointments/:id/reschedule', allowRoles('patient'), (req, res) => {
+  const apptId = req.params.id;
+  const patientId = req.user.patient_id;
+  const { requested_date, requested_time_slot, notes } = req.body || {};
+
+  if (!requested_date || !requested_time_slot) {
+    return res.status(400).json({ success: false, error: 'กรุณาเลือกวันและช่วงเวลาใหม่' });
+  }
+
+  const checkSql = `
+    SELECT a.id, a.patient_id, a.status, a.start_time, a.notes,
+           (d.first_name || ' ' || d.last_name) AS dentist_name
+    FROM appointments a
+    LEFT JOIN dentists d ON d.id = a.dentist_id
+    WHERE a.id = ? AND a.patient_id = ?
+  `;
+
+  db.get(checkSql, [apptId, patientId], (err, appt) => {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+    if (!appt) return res.status(404).json({ success: false, error: 'ไม่พบนัดของคุณ' });
+
+    const allowed = ['PENDING','CONFIRMED'];
+    const nowOk = new Date(appt.start_time) > new Date();
+    if (!allowed.includes(String(appt.status).toUpperCase())) {
+      return res.status(400).json({ success: false, error: 'ไม่สามารถเลื่อนนัดสถานะนี้ได้' });
+    }
+    if (!nowOk) {
+      return res.status(400).json({ success: false, error: 'เลยเวลาเริ่มนัดแล้ว ไม่สามารถเลื่อนได้' });
+    }
+
+    // 1) ยกเลิกนัดเดิม
+    const cancelSql = `UPDATE appointments SET status = 'cancelled' WHERE id = ?`;
+    db.run(cancelSql, [apptId], (err2) => {
+      if (err2) return res.status(500).json({ success: false, error: err2.message });
+
+      // 2) เปิดคำขอใหม่
+      const reqSql = `
+        INSERT INTO appointment_requests (patient_id, requested_date, requested_time_slot, treatment, notes, status)
+        VALUES (?, ?, ?, ?, ?, 'NEW')
+      `;
+      const treatmentText = 'เลื่อนนัดจากคิวเดิม'; // ป้ายกำกับสั้นๆ
+      const noteAll = [
+        (notes || '').trim(),
+        appt.dentist_name ? `ต้องการพบ: ${appt.dentist_name}` : '',
+        appt.notes ? `หมายเหตุเดิม: ${appt.notes}` : ''
+      ].filter(Boolean).join(' | ');
+
+      db.run(reqSql, [patientId, requested_date, requested_time_slot, treatmentText, noteAll || null], function(err3) {
+        if (err3) return res.status(500).json({ success: false, error: err3.message });
+        return res.json({ success: true, message: 'เลื่อนนัดสำเร็จ เปิดคำขอใหม่แล้ว', requestId: this.lastID });
+      });
     });
   });
 });
