@@ -197,4 +197,49 @@ router.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
+router.post('/api/staff/register', async (req, res) => {
+  try {
+    const { citizen_id, password } = req.body;
+
+    // ตรวจสอบข้อมูลเบื้องต้น
+    if (!citizen_id || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'กรุณากรอก citizen_id และ password'
+      });
+    }
+
+    // เข้ารหัสรหัสผ่าน (bcrypt)
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // เพิ่มข้อมูลเข้า table users
+    const [userResult] = await db.query(
+      `INSERT INTO users (citizen_id, password, role)
+       VALUES (?, ?, 'staff')`,
+      [citizen_id, hashedPassword]
+    );
+
+    res.json({
+      success: true,
+      message: 'ลงทะเบียน staff สำเร็จ',
+      userId: userResult.insertId
+    });
+
+  } catch (err) {
+    console.error('Register Staff API Error:', err);
+
+    // ถ้า duplicate (citizen_id ซ้ำ)
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        success: false,
+        error: 'citizen_id นี้มีอยู่ในระบบแล้ว'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'เกิดข้อผิดพลาดภายในระบบ: ' + err.message
+    });
+  }
+});
 module.exports = router;
